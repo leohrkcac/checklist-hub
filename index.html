@@ -5900,6 +5900,77 @@
     });
   }
 
+  /** Remarks tab: pick a checklist item + remark text; write task_remarks (action=remark). */
+  function addProjectRemark(projectId) {
+    const project = getProject(projectId);
+    if (!project) return;
+    const items = projectTasks(projectId).slice().sort((a, b) => {
+      const sa = taskSection(a.title);
+      const sb = taskSection(b.title);
+      if (sa !== sb) return sa.localeCompare(sb);
+      return (a.title || '').localeCompare(b.title || '');
+    });
+    if (!items.length) {
+      openModal({
+        title: 'Add remarks',
+        fields: `
+          <p style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--text)">No checklist items yet.</p>
+          <p class="meta" style="margin:0;font-size:0.8rem;color:var(--text-muted)">Add checklist items first on the Hardware, Software, or Troubleshooting tabs, then return here to add remarks.</p>
+        `,
+        onSubmit() { /* dismiss */ },
+      });
+      return;
+    }
+    const options = items.map((t) =>
+      '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.title || 'Untitled') + '</option>'
+    ).join('');
+    openModal({
+      title: 'Add remarks',
+      fields: `
+        <div class="form-group">
+          <label for="f-remark-task">Checklist item</label>
+          <select id="f-remark-task" name="taskId" required>
+            <option value="">Select an item…</option>
+            ${options}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f-remark">Remark</label>
+          <textarea id="f-remark" name="remark" required maxlength="1000" rows="4" placeholder="Write a remark…"></textarea>
+        </div>
+        <p class="meta" style="margin:0;font-size:0.72rem;color:var(--text-dim)">Tip: remarks are also logged when you check or uncheck items.</p>
+      `,
+      onSubmit(data) {
+        const taskId = (data.taskId || '').trim();
+        const remark = (data.remark || '').trim();
+        if (!taskId || !remark) return false;
+        const t = state.tasks.find((x) => x.id === taskId);
+        if (!t) {
+          alert('Selected checklist item was not found. Refresh and try again.');
+          return false;
+        }
+        (async () => {
+          try {
+            await runSync('Saving remark…', async () => {
+              await writeTaskRemark({
+                taskId: t.id,
+                projectId: t.projectId || projectId,
+                action: 'remark',
+                remark,
+                fromStatus: t.status,
+                toStatus: t.status,
+              });
+            });
+            sectionFilter = 'remarks';
+            render();
+          } catch (err) {
+            alert('Could not save remark: ' + (err.message || 'unknown error'));
+          }
+        })();
+      },
+    });
+  }
+
   /** Put a pending (or done) task on hold — excluded from progress and lineup. */
   function holdTask(id) {
     const t = state.tasks.find((x) => x.id === id);
@@ -6141,7 +6212,8 @@
       return `
         <div class="empty" id="remarks-panel">
           <p>No remarks yet</p>
-          <p class="sub">Remarks and status history for checklist items in this implementation will appear here.</p>
+          <p class="sub">Use <strong>+ Add remarks</strong> to leave a note on a checklist item. Status history from checking items off also appears here.</p>
+          <button type="button" class="btn btn-primary" id="empty-add-remark">+ Add remarks</button>
         </div>
       `;
     }
@@ -6415,14 +6487,15 @@
           </div>`}
         </div>
         <div class="task-toolbar-actions">
-          ${canManageStructure() ? `
+          ${showRemarks ? `
+          <button type="button" class="btn btn-primary" id="btn-add-remark">+ Add remarks</button>
+          <span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Tip: remarks are also logged when checking items off.</span>
+          ` : (canManageStructure() ? `
           <button type="button" class="btn btn-ghost" id="btn-download-template" title="Download a CSV import template">Download template</button>
           <button type="button" class="btn btn-ghost" id="btn-import-tasks" title="Import checklist items from CSV or Excel into this implementation">Import items</button>
           <input type="file" id="import-tasks-file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
-          ${!showRemarks
-            ? '<button type="button" class="btn btn-primary" id="btn-add-task">+ Add checklist item</button>'
-            : '<span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Remarks are added when checking items off.</span>'}
-          ` : '<span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Checklist fill mode — update item status</span>'}
+          <button type="button" class="btn btn-primary" id="btn-add-task">+ Add checklist item</button>
+          ` : '<span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Checklist fill mode — update item status</span>')}
         </div>
       </div>
 
@@ -6456,6 +6529,8 @@
 
     document.getElementById('btn-add-task')?.addEventListener('click', () => addTask(project.id));
     document.getElementById('empty-add-task')?.addEventListener('click', () => addTask(project.id));
+    document.getElementById('btn-add-remark')?.addEventListener('click', () => addProjectRemark(project.id));
+    document.getElementById('empty-add-remark')?.addEventListener('click', () => addProjectRemark(project.id));
     document.getElementById('btn-download-template')?.addEventListener('click', downloadTaskTemplate);
     document.getElementById('btn-import-tasks')?.addEventListener('click', () => {
       const input = document.getElementById('import-tasks-file');
