@@ -658,6 +658,77 @@
     }
     .filter-tabs button:hover:not(.active) { color: var(--text); }
 
+    .filter-tabs-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .filter-tabs.section-tabs {
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs.status-tabs {
+      flex-wrap: wrap;
+      background: transparent;
+      border-style: dashed;
+      opacity: 0.98;
+    }
+
+    .filter-tabs button .tab-count {
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+    .filter-tabs button.active .tab-count { color: var(--text-muted); }
+
+    .remarks-panel {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0;
+      padding: 0;
+    }
+
+    .remarks-panel-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+    }
+
+    .remarks-panel-card .rp-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+
+    .remarks-panel-card .rp-action {
+      display: inline-block;
+      text-transform: uppercase;
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+      font-weight: 650;
+      color: var(--accent);
+      margin-right: 0.35rem;
+    }
+
+    .remarks-panel-card .rp-text {
+      margin-top: 0.2rem;
+      font-size: 0.8rem;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .remarks-panel-card .rp-meta {
+      margin-top: 0.3rem;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+    }
+
     .task-list {
       list-style: none;
       display: flex;
@@ -1471,6 +1542,82 @@
       border-radius: var(--radius-sm);
       font-size: 0.75rem;
     }
+    .assignee-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      max-height: 10rem;
+      overflow: auto;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+    }
+    .assignee-list label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .assignee-list .meta { font-size: 0.7rem; color: var(--text-dim); }
+    .assignee-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.25rem;
+    }
+    .assignee-chip {
+      font-size: 0.68rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-hover);
+      color: var(--text-muted);
+    }
+    .task-remarks {
+      margin-top: 0.45rem;
+      padding-top: 0.35rem;
+      border-top: 1px dashed var(--border);
+    }
+    .task-remarks summary {
+      cursor: pointer;
+      font-size: 0.72rem;
+      color: var(--accent);
+      user-select: none;
+    }
+    .task-remarks ul {
+      list-style: none;
+      margin: 0.35rem 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .task-remarks li {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.35rem 0.5rem;
+    }
+    .task-remarks .rm-who { color: var(--text); font-weight: 600; }
+    .task-remarks .rm-action {
+      text-transform: uppercase;
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+      color: var(--text-dim);
+      margin-left: 0.35rem;
+    }
+    .task-remarks .rm-text { margin-top: 0.15rem; color: var(--text); white-space: pre-wrap; }
+    .task-remarks .rm-meta { font-size: 0.65rem; color: var(--text-dim); margin-top: 0.15rem; }
+    .btn-remark {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.4rem;
+    }
+
     .users-list .active-toggle {
       display: inline-flex;
       align-items: center;
@@ -2097,6 +2244,12 @@
   /** @type {{ id: string, taskId: string, projectId: string|null, testerId: string|null, testerEmail: string, checkedAt: string, result: string, notes: string, attemptNo: number|null, createdAt: string }[]} */
   let taskQaChecks = [];
   let qaModalTaskId = null;
+  /** @type {{ projectId: string, userId: string, assignedBy?: string|null, createdAt?: string }[]} */
+  let projectAssignees = [];
+  /** @type {{ id: string, taskId: string, projectId: string|null, userId: string|null, userEmail: string, userFullName: string, action: string, remark: string, fromStatus: string|null, toStatus: string|null, createdAt: string }[]} */
+  let taskRemarks = [];
+  /** @type {{ user_id: string, email: string, role: string, is_active?: boolean, full_name?: string }[]} */
+  let assignableProfiles = [];
 
   /** Map legacy UI/DB roles → canonical v2 roles. */
   function normalizeRole(role) {
@@ -2554,8 +2707,10 @@
       name: row.title || '',
       description: row.description || '',
       status: statusToUi(row.status || 'active'),
+      company: row.company || '',
       clientName: row.client_name || '',
       branch: row.branch || '',
+      softwareName: row.software_name || '',
       targetDate: row.target_date || '',
       groupId: row.group_id || null,
       createdAt: row.created_at,
@@ -2583,8 +2738,10 @@
       title: p.name,
       description: p.description || '',
       status: statusToDb(p.status),
+      company: p.company || '',
       client_name: p.clientName || '',
       branch: p.branch || '',
+      software_name: p.softwareName || '',
       target_date: emptyToNull(p.targetDate),
       group_id: p.groupId || null,
       updated_at: new Date().toISOString(),
@@ -2783,6 +2940,7 @@
   async function fetchAll() {
     setSync('syncing', 'Loading…');
     await fetchGroupsAndMembers();
+    if (canManageStructure()) await fetchAssignableProfiles();
     const [projRes, taskRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: true }),
       supabase.from('tasks').select('*').order('lineup_order', { ascending: true, nullsFirst: false }),
@@ -2792,6 +2950,20 @@
 
     state.projects = (projRes.data || []).map(mapProjectFromDb);
     state.tasks = (taskRes.data || []).map(mapTaskFromDb);
+
+    await fetchProjectAssignees();
+    await fetchTaskRemarks();
+
+    // Users only see implementations assigned to them (UI filter; RLS also enforces)
+    if (!isAdminRole()) {
+      const uid = currentUserId();
+      const allowed = new Set(
+        projectAssignees.filter((a) => a.userId === uid).map((a) => a.projectId)
+      );
+      state.projects = state.projects.filter((p) => allowed.has(p.id));
+      const allowedProjects = new Set(state.projects.map((p) => p.id));
+      state.tasks = state.tasks.filter((t) => allowedProjects.has(t.projectId));
+    }
 
     if (!state.selectedProjectId || !state.projects.find((p) => p.id === state.selectedProjectId)) {
       state.selectedProjectId = state.projects[0]?.id || null;
@@ -2836,6 +3008,176 @@
       console.error('fetch task_qa_checks failed (run schema-task-qa.sql if missing):', err);
       taskQaChecks = [];
     }
+  }
+
+  function mapRemarkFromDb(row) {
+    return {
+      id: row.id,
+      taskId: row.task_id,
+      projectId: row.project_id || null,
+      userId: row.user_id || null,
+      userEmail: row.user_email || '',
+      userFullName: (row.user_full_name || '').trim(),
+      action: row.action || 'remark',
+      remark: row.remark || '',
+      fromStatus: row.from_status || null,
+      toStatus: row.to_status || null,
+      createdAt: row.created_at,
+    };
+  }
+
+  async function fetchProjectAssignees() {
+    try {
+      if (!supabase) { projectAssignees = []; return; }
+      const { data, error } = await supabase
+        .from('project_assignees')
+        .select('project_id, user_id, assigned_by, created_at');
+      if (error) throw error;
+      projectAssignees = (data || []).map((r) => ({
+        projectId: r.project_id,
+        userId: r.user_id,
+        assignedBy: r.assigned_by || null,
+        createdAt: r.created_at,
+      }));
+    } catch (err) {
+      console.error('fetch project_assignees failed (run schema-assignment-remarks.sql if missing):', err);
+      projectAssignees = [];
+    }
+  }
+
+  async function fetchTaskRemarks() {
+    try {
+      if (!supabase) { taskRemarks = []; return; }
+      const { data, error } = await supabase
+        .from('task_remarks')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      taskRemarks = (data || []).map(mapRemarkFromDb);
+    } catch (err) {
+      console.error('fetch task_remarks failed (run schema-assignment-remarks.sql if missing):', err);
+      taskRemarks = [];
+    }
+  }
+
+  async function fetchAssignableProfiles() {
+    assignableProfiles = [];
+    if (!supabase || !canManageStructure()) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, email, role, full_name, is_active')
+        .order('email', { ascending: true });
+      if (error) throw error;
+      assignableProfiles = (data || []).filter((p) => {
+        const role = normalizeRole(p.role);
+        return role === 'user' || role === 'admin';
+      });
+    } catch (err) {
+      console.error('fetch assignable profiles failed:', err);
+      assignableProfiles = knownProfiles.filter((p) => {
+        const role = normalizeRole(p.role);
+        return role === 'user' || role === 'admin';
+      });
+    }
+  }
+
+  function assigneesForProject(projectId) {
+    return projectAssignees.filter((a) => a.projectId === projectId);
+  }
+
+  function remarksForTask(taskId) {
+    return taskRemarks
+      .filter((r) => r.taskId === taskId)
+      .slice()
+      .sort((a, b) => {
+        const ta = new Date(a.createdAt).getTime();
+        const tb = new Date(b.createdAt).getTime();
+        return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
+      });
+  }
+
+  function profileLabel(p) {
+    if (!p) return 'Unknown';
+    const name = (p.full_name || '').trim();
+    const email = p.email || p.user_id || '';
+    return name ? (name + ' <' + email + '>') : email;
+  }
+
+  function assigneeChipsHtml(projectId) {
+    const rows = assigneesForProject(projectId);
+    if (!rows.length) return '<span class="meta" style="font-size:0.72rem;color:var(--text-dim)">No users assigned</span>';
+    const byId = {};
+    assignableProfiles.concat(knownProfiles).forEach((p) => { byId[p.user_id] = p; });
+    return '<div class="assignee-chips">' + rows.map((a) => {
+      const p = byId[a.userId];
+      const label = p ? ((p.full_name || '').trim() || p.email || a.userId) : a.userId.slice(0, 8);
+      return '<span class="assignee-chip" title="' + escapeHtml(p?.email || a.userId) + '">' + escapeHtml(label) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  async function syncProjectAssignees(projectId, userIds) {
+    const wanted = new Set((userIds || []).filter(Boolean));
+    const existing = assigneesForProject(projectId);
+    const existingIds = new Set(existing.map((a) => a.userId));
+    const toAdd = [...wanted].filter((id) => !existingIds.has(id));
+    const toRemove = [...existingIds].filter((id) => !wanted.has(id));
+    if (toRemove.length) {
+      const { error } = await supabase
+        .from('project_assignees')
+        .delete()
+        .eq('project_id', projectId)
+        .in('user_id', toRemove);
+      if (error) throw error;
+    }
+    if (toAdd.length) {
+      const rows = toAdd.map((uid) => ({
+        project_id: projectId,
+        user_id: uid,
+        assigned_by: currentUserId(),
+      }));
+      const { error } = await supabase.from('project_assignees').insert(rows);
+      if (error) throw error;
+    }
+    await fetchProjectAssignees();
+  }
+
+  async function writeTaskRemark({ taskId, projectId, action, remark, fromStatus, toStatus }) {
+    const row = {
+      task_id: taskId,
+      project_id: projectId || null,
+      user_id: currentUserId(),
+      user_email: session?.user?.email || null,
+      user_full_name: (myFullName || '').trim() || null,
+      action: action || 'remark',
+      remark: (remark || '').trim(),
+      from_status: fromStatus || null,
+      to_status: toStatus || null,
+    };
+    const { data, error } = await supabase.from('task_remarks').insert(row).select().maybeSingle();
+    if (error) throw error;
+    if (data) taskRemarks.unshift(mapRemarkFromDb(data));
+    else await fetchTaskRemarks();
+  }
+
+  function remarksHtml(taskId) {
+    const list = remarksForTask(taskId);
+    if (!list.length) {
+      return '<details class="task-remarks"><summary>History / remarks (0)</summary><p class="meta" style="margin:0.35rem 0 0;font-size:0.72rem;color:var(--text-dim)">No remarks yet.</p></details>';
+    }
+    const items = list.map((r) => {
+      const who = escapeHtml(r.userFullName || r.userEmail || 'Unknown');
+      const when = escapeHtml(formatAuditTime(r.createdAt) || '');
+      const action = escapeHtml(r.action || 'remark');
+      const statusBit = (r.fromStatus || r.toStatus)
+        ? escapeHtml((r.fromStatus || '—') + ' → ' + (r.toStatus || '—'))
+        : '';
+      const text = r.remark ? '<div class="rm-text">' + escapeHtml(r.remark) + '</div>' : '';
+      return '<li><span class="rm-who">' + who + '</span><span class="rm-action">' + action + '</span>'
+        + text
+        + '<div class="rm-meta">' + when + (statusBit ? ' · ' + statusBit : '') + '</div></li>';
+    }).join('');
+    return '<details class="task-remarks"><summary>History / remarks (' + list.length + ')</summary><ul>' + items + '</ul></details>';
   }
 
   function qaForTask(taskId) {
@@ -3550,10 +3892,10 @@
       badge.className = 'role-badge ' + normalizeRole(userRole);
       badge.title =
         userRole === 'super_admin'
-          ? 'Super Admin — manage groups/users, approve deletes, full structure access'
+          ? 'Super Admin — everything Admin can (Company/Client/Software, create & assign checklists, edit structure) plus approve deletes and manage users/groups'
           : (userRole === 'admin'
-            ? 'Admin — add/edit implementations & items; deletes need Super Admin approval'
-            : 'User — fill checklist (update item status) only');
+            ? 'Admin — set Company/Client/Software, create & assign checklists, edit structure; deletes need Super Admin approval'
+            : 'User — only assigned checklists; check/uncheck items and add remarks');
       badge.hidden = false;
     }
     if (approvalsBtn) {
@@ -4384,17 +4726,20 @@
     }
     openModal({
       title: 'New implementation',
-      fields: projectFields({ name: 'New implementation', description: '', status: 'active', clientName: '', branch: '', targetDate: '' }),
+      fields: projectFields({ name: 'New implementation', description: '', status: 'active', company: '', clientName: '', branch: '', softwareName: '', targetDate: '' }),
       onSubmit(data) {
         const draft = {
           name: data.name.trim() || 'Untitled implementation',
           description: data.description.trim(),
           status: data.status,
+          company: (data.company || '').trim(),
           clientName: (data.clientName || '').trim(),
           branch: (data.branch || '').trim(),
+          softwareName: (data.softwareName || '').trim(),
           targetDate: data.targetDate || '',
           groupId: data.groupId || null,
         };
+        const assigneeIds = Array.isArray(data.assigneeIds) ? data.assigneeIds : (data.assigneeIds ? [data.assigneeIds] : []);
         (async () => {
           try {
             await runSync('Saving…', async () => {
@@ -4407,12 +4752,20 @@
               const mapped = mapProjectFromDb(row);
               state.projects.push(mapped);
               state.selectedProjectId = mapped.id;
+              await syncProjectAssignees(mapped.id, assigneeIds);
               await writeAudit({
                 action: 'project.create',
                 entityType: 'project',
                 entityId: mapped.id,
                 entityLabel: mapped.name,
-                details: { status: mapped.status, clientName: mapped.clientName || null, groupId: mapped.groupId || null },
+                details: {
+                  status: mapped.status,
+                  company: mapped.company || null,
+                  clientName: mapped.clientName || null,
+                  softwareName: mapped.softwareName || null,
+                  groupId: mapped.groupId || null,
+                  assigneeIds,
+                },
               });
             });
             render();
@@ -4435,11 +4788,14 @@
       fields: projectFields(p),
       onSubmit(data) {
         const prev = { ...p };
+        const assigneeIds = Array.isArray(data.assigneeIds) ? data.assigneeIds : (data.assigneeIds ? [data.assigneeIds] : []);
         p.name = data.name.trim() || 'Untitled implementation';
         p.description = data.description.trim();
         p.status = data.status;
+        p.company = (data.company || '').trim();
         p.clientName = (data.clientName || '').trim();
         p.branch = (data.branch || '').trim();
+        p.softwareName = (data.softwareName || '').trim();
         p.targetDate = data.targetDate || '';
         p.groupId = data.groupId || null;
         render();
@@ -4451,6 +4807,7 @@
                 .update(projectToDb(p))
                 .eq('id', id);
               if (error) throw error;
+              await syncProjectAssignees(id, assigneeIds);
               await writeAudit({
                 action: 'project.update',
                 entityType: 'project',
@@ -4459,9 +4816,12 @@
                 details: {
                   status: p.status,
                   prevStatus: prev.status,
+                  company: p.company || null,
                   clientName: p.clientName || null,
+                  softwareName: p.softwareName || null,
                   groupId: p.groupId || null,
                   prevGroupId: prev.groupId || null,
+                  assigneeIds,
                 },
               });
               if ((prev.groupId || null) !== (p.groupId || null)) {
@@ -4568,14 +4928,44 @@
     showPane('main');
   }
 
+  function assigneeCheckboxesHtml(projectId) {
+    const selected = new Set(assigneesForProject(projectId || '').map((a) => a.userId));
+    const profiles = (assignableProfiles.length ? assignableProfiles : knownProfiles)
+      .filter((p) => {
+        const role = normalizeRole(p.role);
+        return role === 'user' || role === 'admin';
+      })
+      .slice()
+      .sort((a, b) => String(a.email || '').localeCompare(String(b.email || '')));
+    if (!profiles.length) {
+      return '<p class="meta" style="font-size:0.75rem;color:var(--text-dim)">No User/Admin profiles found to assign. Create accounts first.</p>';
+    }
+    return '<div class="assignee-list">' + profiles.map((p) => {
+      const id = p.user_id;
+      const checked = selected.has(id) ? ' checked' : '';
+      const label = escapeHtml(profileLabel(p));
+      const role = escapeHtml(normalizeRole(p.role));
+      const inactive = p.is_active === false ? ' <span class="meta">(inactive)</span>' : '';
+      return '<label><input type="checkbox" name="assigneeIds" value="' + escapeHtml(id) + '"' + checked + ' />'
+        + '<span>' + label + ' <span class="meta">' + role + '</span>' + inactive + '</span></label>';
+    }).join('') + '</div>';
+  }
+
   function projectFields(p) {
+    const company = p.company ?? '';
     const clientName = p.clientName ?? p.client ?? '';
     const branch = p.branch ?? '';
+    const softwareName = p.softwareName ?? '';
     const targetDate = p.targetDate ?? '';
+    const showAssign = canManageStructure();
     return `
       <div class="form-group">
         <label for="f-name">Implementation title</label>
-        <input id="f-name" name="name" required maxlength="120" value="${escapeHtml(p.name)}" />
+        <input id="f-name" name="name" required maxlength="120" value="${escapeHtml(p.name)}" placeholder="e.g. Tuan Tuan Greenhills" />
+      </div>
+      <div class="form-group">
+        <label for="f-company">Company</label>
+        <input id="f-company" name="company" maxlength="120" value="${escapeHtml(company)}" placeholder="e.g. Parent company" />
       </div>
       <div class="form-group">
         <label for="f-client">Client name</label>
@@ -4584,17 +4974,27 @@
       <div class="form-row">
         <div class="form-group">
           <label for="f-branch">Branch</label>
-          <input id="f-branch" name="branch" maxlength="120" value="${escapeHtml(branch)}" placeholder="e.g. feature/login" />
+          <input id="f-branch" name="branch" maxlength="120" value="${escapeHtml(branch)}" placeholder="e.g. Greenhills / feature/login" />
         </div>
         <div class="form-group">
-          <label for="f-target">Target date</label>
-          <input id="f-target" name="targetDate" type="date" value="${escapeHtml(targetDate)}" />
+          <label for="f-software">Software name</label>
+          <input id="f-software" name="softwareName" maxlength="120" value="${escapeHtml(softwareName)}" placeholder="e.g. Point of Sale" />
         </div>
+      </div>
+      <div class="form-group">
+        <label for="f-target">Target date</label>
+        <input id="f-target" name="targetDate" type="date" value="${escapeHtml(targetDate)}" />
       </div>
       <div class="form-group">
         <label for="f-group">Department / group</label>
         <select id="f-group" name="groupId">${memberGroupOptionsHtml(p.groupId || '')}</select>
       </div>
+      ${showAssign ? `
+      <div class="form-group">
+        <label>Assign to users</label>
+        <p class="meta" style="font-size:0.72rem;color:var(--text-dim);margin:0 0 0.35rem">Users only see implementations assigned to them. Select one or more User (or Admin) accounts.</p>
+        ${assigneeCheckboxesHtml(p.id)}
+      </div>` : ''}
       <div class="form-group">
         <label for="f-desc">Description (optional)</label>
         <textarea id="f-desc" name="description" maxlength="500">${escapeHtml(p.description || '')}</textarea>
@@ -5332,7 +5732,7 @@
     });
   }
 
-  function persistTaskStatusChange(t, prev, auditAction) {
+  function persistTaskStatusChange(t, prev, auditAction, remarkOpts) {
     render();
     (async () => {
       try {
@@ -5345,12 +5745,28 @@
             }
             throw error;
           }
+          // Always write a task_remarks row on check/uncheck (remark text optional)
+          const ro = remarkOpts || {};
+          const action = ro.remarkAction || (t.status === 'done' && prev.status === 'pending' ? 'check'
+            : (t.status === 'pending' ? 'uncheck' : 'remark'));
+          try {
+            await writeTaskRemark({
+              taskId: t.id,
+              projectId: t.projectId,
+              action,
+              remark: ro.remarkText || '',
+              fromStatus: prev.status,
+              toStatus: t.status,
+            });
+          } catch (re) {
+            console.error('task_remarks write failed (run schema-assignment-remarks.sql if missing):', re);
+          }
           await writeAudit({
             action: auditAction || 'task.status',
             entityType: 'task',
             entityId: t.id,
             entityLabel: t.title,
-            details: { status: t.status, prevStatus: prev.status },
+            details: { status: t.status, prevStatus: prev.status, remark: (ro.remarkText || '') || null },
           });
         });
       } catch (err) {
@@ -5371,16 +5787,77 @@
   function toggleTask(id) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
-    const prev = { ...t };
+    const prevStatus = t.status;
+    let nextStatus = prevStatus;
     if (t.status === 'pending') {
-      t.status = 'done'; // Done = ready for QA (not Completed)
-      t.lineupOrder = 0;
+      nextStatus = 'done'; // Done = ready for QA (not Completed)
     } else if (t.status === 'done' || t.status === 'hold' || t.status === 'completed') {
-      // done/completed/hold → pending
-      t.status = 'pending';
-      assignPendingLineup(t);
+      nextStatus = 'pending';
+    } else {
+      return;
     }
-    persistTaskStatusChange(t, prev, 'task.status');
+    const action = nextStatus === 'done' ? 'check' : 'uncheck';
+    const title = nextStatus === 'done' ? 'Mark as done' : 'Mark as pending';
+    openModal({
+      title: title,
+      fields: `
+        <p class="meta" style="margin:0 0 0.75rem;font-size:0.8rem;color:var(--text-muted)">Checklist item: <strong>${escapeHtml(t.title || 'Untitled')}</strong></p>
+        <p class="meta" style="margin:0 0 0.75rem;font-size:0.75rem;color:var(--text-dim)">Status: ${escapeHtml(prevStatus)} → ${escapeHtml(nextStatus)}. Optional remark is saved to history.</p>
+        <div class="form-group">
+          <label for="f-remark">Remark (optional)</label>
+          <textarea id="f-remark" name="remark" maxlength="1000" rows="3" placeholder="Add a note for the history log…"></textarea>
+        </div>
+        ${remarksHtml(t.id)}
+      `,
+      onSubmit(data) {
+        const remark = (data.remark || '').trim();
+        const prev = { ...t };
+        t.status = nextStatus;
+        if (nextStatus === 'done') t.lineupOrder = 0;
+        else assignPendingLineup(t);
+        persistTaskStatusChange(t, prev, 'task.status', {
+          remarkAction: action,
+          remarkText: remark,
+        });
+      },
+    });
+  }
+
+  function addTaskRemarkOnly(id) {
+    const t = state.tasks.find((x) => x.id === id);
+    if (!t) return;
+    openModal({
+      title: 'Add remark',
+      fields: `
+        <p class="meta" style="margin:0 0 0.75rem;font-size:0.8rem;color:var(--text-muted)">Checklist item: <strong>${escapeHtml(t.title || 'Untitled')}</strong></p>
+        <div class="form-group">
+          <label for="f-remark">Remark</label>
+          <textarea id="f-remark" name="remark" required maxlength="1000" rows="3" placeholder="Write a remark…"></textarea>
+        </div>
+        ${remarksHtml(t.id)}
+      `,
+      onSubmit(data) {
+        const remark = (data.remark || '').trim();
+        if (!remark) return false;
+        (async () => {
+          try {
+            await runSync('Saving remark…', async () => {
+              await writeTaskRemark({
+                taskId: t.id,
+                projectId: t.projectId,
+                action: 'remark',
+                remark,
+                fromStatus: t.status,
+                toStatus: t.status,
+              });
+            });
+            render();
+          } catch (err) {
+            alert('Could not save remark: ' + (err.message || 'unknown error'));
+          }
+        })();
+      },
+    });
   }
 
   /** Put a pending (or done) task on hold — excluded from progress and lineup. */
@@ -5449,6 +5926,10 @@
       e.preventDefault();
       const fd = new FormData(form);
       const data = Object.fromEntries(fd.entries());
+      // Multi-checkbox support (assignment UI)
+      if (form.querySelector('[name="assigneeIds"]')) {
+        data.assigneeIds = fd.getAll('assigneeIds');
+      }
       let ok = true;
       if (modalHandler) {
         const result = modalHandler(data);
@@ -5591,6 +6072,64 @@
 
   // ── Render ──
   let taskFilter = 'all';
+  /** Section tab: all | hardware | software | troubleshooting | remarks */
+  let sectionFilter = 'all';
+
+  function taskSection(title) {
+    const t = String(title || '');
+    if (t.startsWith('[Hardware]')) return 'hardware';
+    if (t.startsWith('[Software')) return 'software';
+    if (t.startsWith('[Troubleshooting]')) return 'troubleshooting';
+    return 'other';
+  }
+
+  function remarksForProject(projectId) {
+    const taskIds = new Set(projectTasks(projectId).map((t) => t.id));
+    return taskRemarks
+      .filter((r) => r.projectId === projectId || taskIds.has(r.taskId))
+      .slice()
+      .sort((a, b) => {
+        const ta = new Date(a.createdAt).getTime();
+        const tb = new Date(b.createdAt).getTime();
+        return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
+      });
+  }
+
+  function renderProjectRemarksPanel(projectId) {
+    const list = remarksForProject(projectId);
+    if (!list.length) {
+      return `
+        <div class="empty" id="remarks-panel">
+          <p>No remarks yet</p>
+          <p class="sub">Remarks and status history for checklist items in this implementation will appear here.</p>
+        </div>
+      `;
+    }
+    const taskById = {};
+    state.tasks.forEach((t) => { taskById[t.id] = t; });
+    const rows = list.map((r) => {
+      const task = taskById[r.taskId];
+      const itemTitle = task ? task.title : '(deleted item)';
+      const who = escapeHtml(r.userFullName || r.userEmail || 'Unknown');
+      const when = escapeHtml(formatAuditTime(r.createdAt) || '');
+      const action = escapeHtml(r.action || 'remark');
+      const statusBit = (r.fromStatus || r.toStatus)
+        ? escapeHtml((r.fromStatus || '—') + ' → ' + (r.toStatus || '—'))
+        : '';
+      const text = r.remark
+        ? '<div class="rp-text">' + escapeHtml(r.remark) + '</div>'
+        : '';
+      return `
+        <li class="remarks-panel-card">
+          <div class="rp-title">${escapeHtml(itemTitle)}</div>
+          <div><span class="rp-action">${action}</span></div>
+          ${text}
+          <div class="rp-meta">${who} · ${when}${statusBit ? ' · ' + statusBit : ''}</div>
+        </li>
+      `;
+    }).join('');
+    return `<ul class="remarks-panel" id="remarks-panel" aria-label="Implementation remarks">${rows}</ul>`;
+  }
 
   function renderProgressCard(container, stats, label) {
     const holdChip = stats.hold
@@ -5732,12 +6271,25 @@
     }
 
     const all = projectTasks(project.id);
-    const stats = taskStats(all);
-    let tasks = all;
-    if (taskFilter === 'pending') tasks = all.filter((t) => t.status === 'pending');
-    if (taskFilter === 'done') tasks = all.filter((t) => t.status === 'done');
-    if (taskFilter === 'hold') tasks = all.filter((t) => t.status === 'hold');
-    if (taskFilter === 'completed') tasks = all.filter((t) => t.status === 'completed');
+    const sectionCounts = {
+      all: all.length,
+      hardware: all.filter((t) => taskSection(t.title) === 'hardware').length,
+      software: all.filter((t) => taskSection(t.title) === 'software').length,
+      troubleshooting: all.filter((t) => taskSection(t.title) === 'troubleshooting').length,
+    };
+    const remarksCount = remarksForProject(project.id).length;
+
+    let sectionTasks = all;
+    if (sectionFilter === 'hardware' || sectionFilter === 'software' || sectionFilter === 'troubleshooting') {
+      sectionTasks = all.filter((t) => taskSection(t.title) === sectionFilter);
+    }
+    const sectionStats = taskStats(sectionTasks);
+    const stats = taskStats(all); /* progress card stays project-wide */
+    let tasks = sectionTasks;
+    if (taskFilter === 'pending') tasks = sectionTasks.filter((t) => t.status === 'pending');
+    if (taskFilter === 'done') tasks = sectionTasks.filter((t) => t.status === 'done');
+    if (taskFilter === 'hold') tasks = sectionTasks.filter((t) => t.status === 'hold');
+    if (taskFilter === 'completed') tasks = sectionTasks.filter((t) => t.status === 'completed');
 
     const STATUS_SORT = { pending: 0, hold: 1, done: 2, completed: 3 };
     tasks = tasks.slice().sort((a, b) => {
@@ -5753,6 +6305,8 @@
       return a.title.localeCompare(b.title);
     });
 
+    const showRemarks = sectionFilter === 'remarks';
+
     const progressHtml = `
       <div class="overall-card" id="project-progress" style="max-width:28rem"></div>
     `;
@@ -5763,6 +6317,10 @@
     const factsHtml = `
       <div class="project-facts">
         <div class="fact">
+          <span class="fact-label">Company</span>
+          <span class="fact-value ${project.company ? '' : 'empty'}">${project.company ? escapeHtml(project.company) : 'Not set'}</span>
+        </div>
+        <div class="fact">
           <span class="fact-label">Client</span>
           <span class="fact-value ${project.clientName ? '' : 'empty'}">${project.clientName ? escapeHtml(project.clientName) : 'Not set'}</span>
         </div>
@@ -5771,8 +6329,16 @@
           <span class="fact-value mono ${project.branch ? '' : 'empty'}">${project.branch ? escapeHtml(project.branch) : 'Not set'}</span>
         </div>
         <div class="fact">
+          <span class="fact-label">Software</span>
+          <span class="fact-value ${project.softwareName ? '' : 'empty'}">${project.softwareName ? escapeHtml(project.softwareName) : 'Not set'}</span>
+        </div>
+        <div class="fact">
           <span class="fact-label">Target date</span>
           <span class="fact-value ${targetCls}">${project.targetDate ? formatDue(project.targetDate) : 'Not set'}</span>
+        </div>
+        <div class="fact" style="grid-column:1/-1">
+          <span class="fact-label">Assigned users</span>
+          <div class="fact-value">${assigneeChipsHtml(project.id)}</div>
         </div>
       </div>
     `;
@@ -5791,12 +6357,22 @@
       </div>
 
       <div class="task-toolbar">
-        <div class="filter-tabs" role="tablist" aria-label="Filter checklist items">
-          <button type="button" role="tab" data-filter="all" class="${taskFilter === 'all' ? 'active' : ''}" aria-selected="${taskFilter === 'all'}">All (${all.length})</button>
-          <button type="button" role="tab" data-filter="pending" class="${taskFilter === 'pending' ? 'active' : ''}" aria-selected="${taskFilter === 'pending'}">Pending (${stats.pending})</button>
-          <button type="button" role="tab" data-filter="hold" class="${taskFilter === 'hold' ? 'active' : ''}" aria-selected="${taskFilter === 'hold'}">Hold (${stats.hold})</button>
-          <button type="button" role="tab" data-filter="done" class="${taskFilter === 'done' ? 'active' : ''}" aria-selected="${taskFilter === 'done'}">Done (${stats.doneOnly})</button>
-          <button type="button" role="tab" data-filter="completed" class="${taskFilter === 'completed' ? 'active' : ''}" aria-selected="${taskFilter === 'completed'}">Completed (${stats.completed})</button>
+        <div class="filter-tabs-stack">
+          <div class="filter-tabs section-tabs" role="tablist" aria-label="Filter by section">
+            <button type="button" role="tab" data-section-filter="all" class="${sectionFilter === 'all' ? 'active' : ''}" aria-selected="${sectionFilter === 'all'}">All sections <span class="tab-count">(${sectionCounts.all})</span></button>
+            <button type="button" role="tab" data-section-filter="hardware" class="${sectionFilter === 'hardware' ? 'active' : ''}" aria-selected="${sectionFilter === 'hardware'}">Hardware <span class="tab-count">(${sectionCounts.hardware})</span></button>
+            <button type="button" role="tab" data-section-filter="software" class="${sectionFilter === 'software' ? 'active' : ''}" aria-selected="${sectionFilter === 'software'}">Software <span class="tab-count">(${sectionCounts.software})</span></button>
+            <button type="button" role="tab" data-section-filter="troubleshooting" class="${sectionFilter === 'troubleshooting' ? 'active' : ''}" aria-selected="${sectionFilter === 'troubleshooting'}">Troubleshooting <span class="tab-count">(${sectionCounts.troubleshooting})</span></button>
+            <button type="button" role="tab" data-section-filter="remarks" class="${sectionFilter === 'remarks' ? 'active' : ''}" aria-selected="${sectionFilter === 'remarks'}">Remarks <span class="tab-count">(${remarksCount})</span></button>
+          </div>
+          ${showRemarks ? '' : `
+          <div class="filter-tabs status-tabs" role="tablist" aria-label="Filter by status">
+            <button type="button" role="tab" data-filter="all" class="${taskFilter === 'all' ? 'active' : ''}" aria-selected="${taskFilter === 'all'}">All <span class="tab-count">(${sectionTasks.length})</span></button>
+            <button type="button" role="tab" data-filter="pending" class="${taskFilter === 'pending' ? 'active' : ''}" aria-selected="${taskFilter === 'pending'}">Pending <span class="tab-count">(${sectionStats.pending})</span></button>
+            <button type="button" role="tab" data-filter="hold" class="${taskFilter === 'hold' ? 'active' : ''}" aria-selected="${taskFilter === 'hold'}">Hold <span class="tab-count">(${sectionStats.hold})</span></button>
+            <button type="button" role="tab" data-filter="done" class="${taskFilter === 'done' ? 'active' : ''}" aria-selected="${taskFilter === 'done'}">Done <span class="tab-count">(${sectionStats.doneOnly})</span></button>
+            <button type="button" role="tab" data-filter="completed" class="${taskFilter === 'completed' ? 'active' : ''}" aria-selected="${taskFilter === 'completed'}">Completed <span class="tab-count">(${sectionStats.completed})</span></button>
+          </div>`}
         </div>
         <div class="task-toolbar-actions">
           ${canManageStructure() ? `
@@ -5808,15 +6384,28 @@
         </div>
       </div>
 
+      ${showRemarks ? renderProjectRemarksPanel(project.id) : `
       <ul class="task-list" id="task-list">
         ${tasks.length === 0 ? `
           <li class="empty">
-            <p>${taskFilter === 'all' ? 'No checklist items in this implementation yet' : (taskFilter === 'hold' ? 'No checklist items on hold' : `No ${taskFilter} items`)}</p>
-            <p class="sub">${taskFilter === 'all' ? (canManageStructure() ? 'Add a checklist item to start tracking implementation progress.' : 'Ask an Admin to add checklist items.') : 'Try another filter.'}</p>
-            ${taskFilter === 'all' && canManageStructure() ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
+            <p>${(() => {
+              if (sectionTasks.length === 0 && sectionFilter !== 'all') {
+                const labels = { hardware: 'Hardware', software: 'Software', troubleshooting: 'Troubleshooting' };
+                return 'No ' + (labels[sectionFilter] || sectionFilter) + ' items';
+              }
+              if (taskFilter === 'all') return 'No checklist items in this implementation yet';
+              if (taskFilter === 'hold') return 'No checklist items on hold';
+              return 'No ' + taskFilter + ' items';
+            })()}</p>
+            <p class="sub">${sectionTasks.length === 0 && sectionFilter !== 'all'
+              ? 'Try another section tab, or All sections.'
+              : (taskFilter === 'all'
+                ? (canManageStructure() ? 'Add a checklist item to start tracking implementation progress.' : 'Ask an Admin to add checklist items.')
+                : 'Try another filter.')}</p>
+            ${taskFilter === 'all' && sectionFilter === 'all' && canManageStructure() ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
           </li>
         ` : tasks.map((t) => renderTaskCard(t)).join('')}
-      </ul>
+      </ul>`}
     `;
 
     renderProgressCard(document.getElementById('project-progress'), stats, 'This implementation');
@@ -5834,6 +6423,13 @@
     document.getElementById('import-tasks-file')?.addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) importTasksFromFile(file, project.id);
+    });
+
+    main.querySelectorAll('[data-section-filter]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sectionFilter = btn.getAttribute('data-section-filter') || 'all';
+        render();
+      });
     });
 
     main.querySelectorAll('[data-filter]').forEach((btn) => {
@@ -5883,11 +6479,13 @@
             ${qaBadge}
             ${due}
           </div>
+          ${remarksHtml(t.id)}
         </div>
         <div class="task-actions">
           ${t.status === 'done'
             ? `<button type="button" class="btn-icon" data-action="qa-task" data-id="${t.id}" title="Check &amp; test (QA)" aria-label="Check and test">📋</button>`
             : `<button type="button" class="btn-icon qa-btn-disabled" disabled title="QA only when status is Done (awaiting QA)" aria-label="QA unavailable">📋</button>`}
+          <button type="button" class="btn-icon btn-remark" data-action="remark-task" data-id="${t.id}" title="Add remark" aria-label="Add remark">💬</button>
           ${holdBtn}
           ${canManageStructure() ? `<button type="button" class="btn-icon" data-action="edit-task" data-id="${t.id}" title="Edit" aria-label="Edit checklist item">✎</button>` : ''}
           ${canManageStructure() ? `<button type="button" class="btn-icon danger" data-action="delete-task" data-id="${t.id}" title="${isDeletePending('task', t.id) ? 'Delete pending approval' : (canDirectDelete() ? 'Delete checklist item' : 'Request delete approval')}" aria-label="Delete checklist item" ${isDeletePending('task', t.id) ? 'disabled' : ''}>✕</button>` : ''}
@@ -5985,6 +6583,7 @@
     const id = btn.getAttribute('data-id');
     if (action === 'toggle-task') toggleTask(id);
     if (action === 'hold-task') holdTask(id);
+    if (action === 'remark-task') addTaskRemarkOnly(id);
     if (action === 'qa-task') openQaModal(id);
     if (action === 'edit-task') editTask(id);
     if (action === 'delete-task') deleteTask(id);
