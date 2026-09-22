@@ -2492,6 +2492,32 @@
   let pendingOtpType = 'signup'; // signup | email
   /** @type {{ full_name: string, gender: string, birthday: string }|null} */
   let pendingProfileDetails = null;
+  const PENDING_PROFILE_KEY = 'checklistHub.pendingProfileDetails';
+  function savePendingProfileDetails(details) {
+    pendingProfileDetails = details;
+    try {
+      if (details) sessionStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(details));
+      else sessionStorage.removeItem(PENDING_PROFILE_KEY);
+    } catch (_) { /* ignore */ }
+  }
+  function loadPendingProfileDetails() {
+    if (pendingProfileDetails) return pendingProfileDetails;
+    try {
+      const raw = sessionStorage.getItem(PENDING_PROFILE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        pendingProfileDetails = {
+          full_name: parsed.full_name || '',
+          gender: parsed.gender || '',
+          birthday: parsed.birthday || '',
+        };
+        return pendingProfileDetails;
+      }
+    } catch (_) { /* ignore */ }
+    return null;
+  }
+  loadPendingProfileDetails();
   let myFullName = '';
   let appBooted = false;
   let authListenerReady = false;
@@ -4348,6 +4374,7 @@
       }
 
       // Apply pending signup details (OTP flow) if present
+      loadPendingProfileDetails();
       if (pendingProfileDetails) {
         const patch = {
           full_name: pendingProfileDetails.full_name || null,
@@ -4359,7 +4386,7 @@
           const { error: upErr } = await supabase.from('profiles').update(patch).eq('user_id', uid);
           if (!upErr) {
             row = { ...row, ...patch };
-            pendingProfileDetails = null;
+            savePendingProfileDetails(null);
           } else {
             console.warn('Could not save profile details yet:', upErr.message);
           }
@@ -8287,7 +8314,7 @@
     const btn = document.getElementById('btn-signup');
     setBusy(btn, true, 'Creating…');
     setAuthMsg('');
-    pendingProfileDetails = { full_name: fullName, gender, birthday };
+    savePendingProfileDetails({ full_name: fullName, gender, birthday });
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
