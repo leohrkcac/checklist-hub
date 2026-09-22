@@ -1713,6 +1713,96 @@
       vertical-align: middle;
     }
 
+    .cap-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.08rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--bg-input);
+      margin-right: 0.25rem;
+    }
+    .cap-badge.on {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: rgba(91, 141, 239, 0.45);
+    }
+    .cap-badge.btnish { cursor: pointer; }
+    .workflow-hint {
+      margin: 0 0 0.75rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px dashed rgba(91, 141, 239, 0.4);
+      background: rgba(91, 141, 239, 0.08);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+    .header-workflow {
+      display: none;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      max-width: 16rem;
+      line-height: 1.25;
+    }
+    @media (min-width: 1100px) {
+      .header-workflow { display: inline; }
+    }
+    .instr-check-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.85rem;
+      margin: 0.25rem 0 0.5rem;
+    }
+    .instr-check-grid label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.78rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .instr-section {
+      margin: 0.85rem 0 0.5rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid var(--border);
+    }
+    .instr-section h4 {
+      margin: 0 0 0.45rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+    .instr-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+    }
+    .instr-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .instr-list li:last-child { border-bottom: none; }
+    .instr-list .meta { color: var(--text-dim); font-size: 0.72rem; }
+    #instructions-modal.modal-wide { max-width: 52rem; width: min(52rem, 96vw); }
+    #instructions-form-wrap { max-height: 65vh; overflow-y: auto; padding-right: 0.25rem; }
+
+
     .admin-tabs {
       display: flex;
       gap: 0.35rem;
@@ -2065,6 +2155,10 @@
         <button type="button" class="btn btn-ghost btn-sm" id="btn-audit-log" title="View your audit log">
           Audit log
         </button>
+        <span class="header-workflow" id="header-workflow" title="Group workflow">Sales → Instructions · Helpdesk → Assign · Implementation → Execute</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-instructions" title="Implementation Instructions (Travel Order / Client Itinerary)" hidden>
+          Instructions
+        </button>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-setup" title="Manage Company / Client / Branch / Software masters" hidden>
           Setup
         </button>
@@ -2188,10 +2282,42 @@
     </div>
   </div>
 
+  <!-- Implementation Instructions (Sales / create capability) -->
+  <div class="modal-backdrop" id="instructions-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="instructions-title">
+    <div class="modal modal-wide" id="instructions-modal">
+      <h3 id="instructions-title">Implementation Instructions</h3>
+      <p class="workflow-hint">Travel Order / Client Itinerary — created by Sales. Checklists can link to an instruction later. Helpdesk assigns; Implementation Team executes.</p>
+      <div class="admin-tabs" role="tablist" id="instructions-tabs">
+        <button type="button" class="active" data-instr-tab="list">List</button>
+        <button type="button" data-instr-tab="form" id="instr-tab-form">New / Edit</button>
+      </div>
+      <div id="instructions-panel-list" class="admin-section active">
+        <div class="admin-row">
+          <button type="button" class="btn btn-primary btn-sm" id="instr-new">+ New instruction</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="instr-refresh">Refresh</button>
+        </div>
+        <ul class="instr-list" id="instructions-list"></ul>
+      </div>
+      <div id="instructions-panel-form" class="admin-section">
+        <div id="instructions-form-wrap">
+          <!-- filled by JS -->
+        </div>
+        <div class="modal-actions" style="margin-top:0.75rem">
+          <button type="button" class="btn btn-ghost" id="instr-form-cancel">Back to list</button>
+          <button type="button" class="btn btn-primary" id="instr-form-save">Save instruction</button>
+        </div>
+      </div>
+      <div class="modal-actions" id="instructions-list-actions">
+        <button type="button" class="btn btn-primary" id="instructions-close">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Groups / admin (super users) -->
   <div class="modal-backdrop" id="admin-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="admin-title">
     <div class="modal modal-wide" id="admin-modal">
       <h3 id="admin-title">Groups &amp; departments</h3>
+      <p class="workflow-hint" id="workflow-hint">Workflow: <strong>Sales</strong> creates Implementation Instructions → <strong>Helpdesk</strong> assigns checklists → <strong>Implementation Team</strong> executes. Capability badges below are read from DB flags (Super Admin can toggle).</p>
       <div class="admin-tabs" role="tablist">
         <button type="button" class="active" data-admin-tab="groups">Groups</button>
         <button type="button" data-admin-tab="members">Members</button>
@@ -2373,8 +2499,13 @@
   let profileIsActive = true;
   /** @type {{ project: Set<string>, task: Set<string> }} */
   let pendingDeleteIds = { project: new Set(), task: new Set() };
-  /** @type {{ id: string, name: string, description: string }[]} */
+  /** @type {{ id: string, name: string, description: string, canCreateImplementation?: boolean, canAssignImplementation?: boolean, canExecuteChecklist?: boolean }[]} */
   let groups = [];
+  /** Group workflow capabilities for the signed-in user (RPC or derived). */
+  let myCaps = { create: false, assign: false, execute: false };
+  /** @type {any[]} */
+  let instructions = [];
+  let editingInstructionId = null;
   /** @type {{ groupId: string, userId: string, email?: string }[]} */
   let groupMembers = [];
   /** @type {{ user_id: string, email: string, role: string, is_active?: boolean, full_name?: string }[]} */
@@ -2410,9 +2541,28 @@
   function isAdminRole() {
     return userRole === 'admin' || userRole === 'super_admin';
   }
-  /** Add / edit implementations & checklist item structure (not status-only). */
+  /** Create Instructions / setup masters / checklist structure. */
+  function canCreateImplementation() {
+    return isAdminRole() || !!myCaps.create;
+  }
+  /** Assign checklists to Implementation Team. */
+  function canAssignImplementation() {
+    return isAdminRole() || !!myCaps.assign;
+  }
+  /** Execute checklist (check/uncheck + remarks), or assignee, or admin. */
+  function canExecuteChecklist(projectId) {
+    if (isAdminRole() || !!myCaps.execute) return true;
+    if (!projectId) return !!myCaps.execute;
+    const uid = currentUserId();
+    return !!(uid && projectAssignees.some((a) => a.projectId === projectId && a.userId === uid));
+  }
+  function isProjectAssignee(projectId) {
+    const uid = currentUserId();
+    return !!(uid && projectId && projectAssignees.some((a) => a.projectId === projectId && a.userId === uid));
+  }
+  /** Add / edit checklist structure (Sales create-cap or Admin). */
   function canManageStructure() {
-    return isAdminRole();
+    return canCreateImplementation();
   }
   function canApproveDeletes() {
     return isSuperAdmin();
@@ -2422,6 +2572,14 @@
   }
   function canRequestDelete() {
     return isAdminRole();
+  }
+  function implementationTeamGroup() {
+    return groups.find((g) => String(g.name || '').toLowerCase() === 'implementation team') || null;
+  }
+  function implementationTeamUserIds() {
+    const g = implementationTeamGroup();
+    if (!g) return new Set();
+    return new Set(groupMembers.filter((m) => m.groupId === g.id).map((m) => m.userId));
   }
   function roleBadgeLabel(role) {
     const r = normalizeRole(role);
@@ -2886,6 +3044,7 @@
       softwareName: row.software_name || '',
       targetDate: row.target_date || '',
       groupId: row.group_id || null,
+      instructionId: row.instruction_id || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -2917,6 +3076,7 @@
       software_name: p.softwareName || '',
       target_date: emptyToNull(p.targetDate),
       group_id: p.groupId || null,
+      instruction_id: p.instructionId || null,
       updated_at: new Date().toISOString(),
     };
   }
@@ -3080,13 +3240,19 @@
         id: r.id,
         name: r.name || '',
         description: r.description || '',
+        canCreateImplementation: !!r.can_create_implementation,
+        canAssignImplementation: !!r.can_assign_implementation,
+        canExecuteChecklist: !!r.can_execute_checklist,
       }));
     } catch (err) {
       console.error('fetch groups failed:', err);
     }
     try {
       let q = supabase.from('group_members').select('group_id, user_id, created_at');
-      if (!isSuperUser()) q = q.eq('user_id', currentUserId());
+      // Super / assign-capable need full membership (e.g. Implementation Team filter)
+      if (!isSuperUser() && !canAssignImplementation() && !myCaps.assign) {
+        q = q.eq('user_id', currentUserId());
+      }
       const mRes = await q;
       if (mRes.error) throw mRes.error;
       groupMembers = (mRes.data || []).map((r) => ({
@@ -3096,11 +3262,10 @@
     } catch (err) {
       console.error('fetch group_members failed:', err);
     }
-    if (isSuperUser()) {
+    if (isSuperUser() || canAssignImplementation() || myCaps.assign) {
       try {
         const pRes = await supabase.from('profiles').select('user_id, email, role, full_name, is_active').order('email', { ascending: true });
         if (!pRes.error) knownProfiles = pRes.data || [];
-        // Enrich member emails from profiles
         const byId = {};
         knownProfiles.forEach((p) => { byId[p.user_id] = p.email || ''; });
         groupMembers = groupMembers.map((m) => ({ ...m, email: byId[m.userId] || m.email || '' }));
@@ -3110,11 +3275,40 @@
     }
   }
 
+  async function refreshMyCapabilities() {
+    myCaps = { create: isAdminRole(), assign: isAdminRole(), execute: isAdminRole() };
+    try {
+      if (!supabase || !session?.user) return myCaps;
+      const [cRes, aRes, eRes] = await Promise.all([
+        supabase.rpc('can_create_implementation'),
+        supabase.rpc('can_assign_implementation'),
+        supabase.rpc('can_execute_checklist'),
+      ]);
+      if (!cRes.error) myCaps.create = !!cRes.data;
+      if (!aRes.error) myCaps.assign = !!aRes.data;
+      if (!eRes.error) myCaps.execute = !!eRes.data;
+    } catch (err) {
+      console.warn('capability RPCs failed; deriving from group flags', err);
+      const uid = currentUserId();
+      const mine = groups.filter((g) => groupMembers.some((m) => m.groupId === g.id && m.userId === uid));
+      myCaps.create = isAdminRole() || mine.some((g) => g.canCreateImplementation);
+      myCaps.assign = isAdminRole() || mine.some((g) => g.canAssignImplementation);
+      myCaps.execute = isAdminRole() || mine.some((g) => g.canExecuteChecklist);
+    }
+    return myCaps;
+  }
+
   async function fetchAll() {
     setSync('syncing', 'Loading…');
     await fetchGroupsAndMembers();
-    if (canManageStructure()) await fetchAssignableProfiles();
+    await refreshMyCapabilities();
+    // Re-fetch members with assign scope once caps known
+    if (canAssignImplementation() && !isSuperUser()) {
+      await fetchGroupsAndMembers();
+    }
+    if (canManageStructure() || canAssignImplementation()) await fetchAssignableProfiles();
     await loadSetupMasters();
+    await fetchInstructions();
     const [projRes, taskRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: true }),
       supabase.from('tasks').select('*').order('lineup_order', { ascending: true, nullsFirst: false }),
@@ -3128,8 +3322,8 @@
     await fetchProjectAssignees();
     await fetchTaskRemarks();
 
-    // Users only see implementations assigned to them (UI filter; RLS also enforces)
-    if (!isAdminRole()) {
+    // Pure Users (no create/assign caps) only see assigned checklists
+    if (!isAdminRole() && !canCreateImplementation() && !canAssignImplementation()) {
       const uid = currentUserId();
       const allowed = new Set(
         projectAssignees.filter((a) => a.userId === uid).map((a) => a.projectId)
@@ -3236,7 +3430,7 @@
 
   async function fetchAssignableProfiles() {
     assignableProfiles = [];
-    if (!supabase || !canManageStructure()) return;
+    if (!supabase || !(canManageStructure() || canAssignImplementation())) return;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -4058,6 +4252,7 @@
     const badge = document.getElementById('user-role-badge');
     const approvalsBtn = document.getElementById('btn-delete-approvals');
     const setupBtn = document.getElementById('btn-setup');
+    const instrBtn = document.getElementById('btn-instructions');
     const adminBtn = document.getElementById('btn-admin');
     const usersBtn = document.getElementById('btn-users');
     const addProjectBtn = document.getElementById('btn-add-project');
@@ -4065,19 +4260,25 @@
       const label = roleBadgeLabel(userRole);
       badge.textContent = label;
       badge.className = 'role-badge ' + normalizeRole(userRole);
+      const capBits = [];
+      if (canCreateImplementation()) capBits.push('Instructions/create');
+      if (canAssignImplementation()) capBits.push('Assign');
+      if (myCaps.execute || isAdminRole()) capBits.push('Execute');
       badge.title =
         userRole === 'super_admin'
-          ? 'Super Admin — everything Admin can (Company/Client/Software, create & assign checklists, edit structure) plus approve deletes and manage users/groups'
+          ? 'Super Admin — full access (Instructions, assign, execute, users/groups, approve deletes)'
           : (userRole === 'admin'
-            ? 'Admin — set Company/Client/Software, create & assign checklists, edit structure; deletes need Super Admin approval'
-            : 'User — only assigned checklists; check/uncheck items and add remarks');
+            ? 'Admin — Instructions, create/assign checklists, edit structure; deletes need Super Admin approval'
+            : ('User — assigned checklists; check/uncheck + remarks'
+              + (capBits.length ? ' · caps: ' + capBits.join(', ') : '')));
       badge.hidden = false;
     }
     if (approvalsBtn) {
       approvalsBtn.hidden = !canApproveDeletes();
       updatePendingApprovalsButton();
     }
-    if (setupBtn) setupBtn.hidden = !isAdminRole();
+    if (instrBtn) instrBtn.hidden = !canCreateImplementation();
+    if (setupBtn) setupBtn.hidden = !canCreateImplementation();
     if (adminBtn) adminBtn.hidden = !isSuperAdmin();
     if (usersBtn) usersBtn.hidden = !isSuperAdmin();
     if (addProjectBtn) {
@@ -4455,6 +4656,372 @@
   }
 
 
+
+  // ── Implementation Instructions module (Travel Order form) ──
+  const INSTR_TRAINING_DAYS = ['5 Days', '4 Days', '3 Days', '2 Days', '1 Day', 'Half-Day', 'Re-training'];
+  const INSTR_SERVICE_TYPES = ['QUICK SERVICE', 'FINE DINE-IN'];
+  const INSTR_PRODUCT_CLIENT = ['Purchased Client', 'Rental Client', 'Regit Purchased', 'Rent to Own', 'DEMO'];
+  const INSTR_PRODUCT_SCOPE = ['SOFTWARE (Only)', 'HARDWARE (Only)', 'Software and Hardware'];
+  const INSTR_SOFTWARE_TYPES = ['Aldelo for Restaurant', 'Aldelo for Retail', 'EPOS RT', 'EPOS FB'];
+  const INSTR_HW_SETUP = ['Stand Alone', 'Server, Cashier & Ordering', 'Cashier & Ordering', 'Ordering (Only)', 'HQ', 'Self Ordering', 'Wireless Ordering', 'Queuing', 'KDS', 'Label Printer', 'Remote Printer'];
+  const INSTR_MALL = ['SM Mall', 'Ortigas Mall', 'NONE', 'Robinsons Mall', 'Promenade', 'Others', 'Ayala Mall', 'Megaworld'];
+  const INSTR_NET = ['Networking/Cabling for full Set-up', 'Hook – Up Cabling (Only)', 'Kitchen/Bar printer Networking/Cabling (Only)', 'Termination (Only)', 'The networking is available and ready by the client contractor'];
+  const INSTR_BIR_PERMIT = ['FINAL PERMIT (FP)', 'Special Purpose Machine (SPM)', 'The BIR PTU is not yet available'];
+  const INSTR_BIR_VAT = ['Vatable', 'Vat-Exempt', 'Non-Vat'];
+  const INSTR_PAYMENT = ['DOWN PAYMENT', 'FULL PAYMENT', 'BALANCE PAYMENT', 'DELIVERY CHARGE', 'INCIDENTALS', 'FOR BILLING'];
+
+  function splitCsvFlags(s) { return String(s || '').split(',').map((x) => x.trim()).filter(Boolean); }
+  function joinCsvFlags(arr) { return (arr || []).map((x) => String(x).trim()).filter(Boolean).join(', '); }
+  function instructionLabel(id) {
+    const ins = (instructions || []).find((x) => x.id === id);
+    if (!ins) return id ? String(id).slice(0, 8) + '…' : '—';
+    return ins.title || ins.client_name || 'Untitled instruction';
+  }
+  function mapInstructionFromDb(row) {
+    return {
+      id: row.id, title: row.title || '', company: row.company || '', client_name: row.client_name || '',
+      branch: row.branch || '', software_name: row.software_name || '', body: row.body || '',
+      status: row.status || 'draft', created_by: row.created_by || null, created_at: row.created_at, updated_at: row.updated_at,
+      address: row.address || '', contact_person: row.contact_person || '', contact_number: row.contact_number || '',
+      training_days: row.training_days || '', day1_schedule: row.day1_schedule || '', day2_schedule: row.day2_schedule || '',
+      day3_schedule: row.day3_schedule || '', day4_schedule: row.day4_schedule || '', day5_schedule: row.day5_schedule || '',
+      target_opening_date: row.target_opening_date || '', service_type: row.service_type || '',
+      product_client_type: row.product_client_type || '', product_scope: row.product_scope || '',
+      software_type: row.software_type || '', hardware_setup: row.hardware_setup || '',
+      hardware_model_brand: row.hardware_model_brand || '', mall_hookup: row.mall_hookup || '',
+      hookup_connection_type: row.hookup_connection_type || '', networking_cabling: row.networking_cabling || '',
+      bir_permit_type: row.bir_permit_type || '', bir_vat_type: row.bir_vat_type || '',
+      payment_collection_type: row.payment_collection_type || '', collectibles_amount: row.collectibles_amount || '',
+      collection_contact_person: row.collection_contact_person || '', collection_contact_number: row.collection_contact_number || '',
+      collection_designation: row.collection_designation || '', collection_receipt_notes: row.collection_receipt_notes || '',
+      sales_representative: row.sales_representative || '', date_request: row.date_request || '',
+      implementer_representative: row.implementer_representative || '', implementation_coordinator: row.implementation_coordinator || '',
+    };
+  }
+  function instructionToDb(ins) {
+    return {
+      title: ins.title || '', company: ins.company || '', client_name: ins.client_name || '', branch: ins.branch || '',
+      software_name: ins.software_name || '', body: ins.body || '', status: ins.status || 'draft',
+      address: ins.address || '', contact_person: ins.contact_person || '', contact_number: ins.contact_number || '',
+      training_days: ins.training_days || '', day1_schedule: ins.day1_schedule || '', day2_schedule: ins.day2_schedule || '',
+      day3_schedule: ins.day3_schedule || '', day4_schedule: ins.day4_schedule || '', day5_schedule: ins.day5_schedule || '',
+      target_opening_date: emptyToNull(ins.target_opening_date), service_type: ins.service_type || '',
+      product_client_type: ins.product_client_type || '', product_scope: ins.product_scope || '',
+      software_type: ins.software_type || '', hardware_setup: ins.hardware_setup || '',
+      hardware_model_brand: ins.hardware_model_brand || '', mall_hookup: ins.mall_hookup || '',
+      hookup_connection_type: ins.hookup_connection_type || '', networking_cabling: ins.networking_cabling || '',
+      bir_permit_type: ins.bir_permit_type || '', bir_vat_type: ins.bir_vat_type || '',
+      payment_collection_type: ins.payment_collection_type || '', collectibles_amount: ins.collectibles_amount || '',
+      collection_contact_person: ins.collection_contact_person || '', collection_contact_number: ins.collection_contact_number || '',
+      collection_designation: ins.collection_designation || '', collection_receipt_notes: ins.collection_receipt_notes || '',
+      sales_representative: ins.sales_representative || '', date_request: ins.date_request || '',
+      implementer_representative: ins.implementer_representative || '', implementation_coordinator: ins.implementation_coordinator || '',
+      updated_at: new Date().toISOString(),
+    };
+  }
+  async function fetchInstructions() {
+    instructions = [];
+    try {
+      if (!supabase) return;
+      const { data, error } = await supabase.from('implementation_instructions').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      instructions = (data || []).map(mapInstructionFromDb);
+    } catch (err) {
+      console.error('fetch instructions failed:', err);
+      instructions = [];
+    }
+  }
+  function checkGridHtml(name, options, selectedCsv) {
+    const selected = new Set(splitCsvFlags(selectedCsv));
+    return '<div class="instr-check-grid">' + options.map((opt) => {
+      const id = name + '__' + opt.replace(/[^a-zA-Z0-9]+/g, '_');
+      return '<label for="' + escapeHtml(id) + '"><input type="checkbox" id="' + escapeHtml(id) + '" name="' + escapeHtml(name) + '" value="' + escapeHtml(opt) + '"'
+        + (selected.has(opt) ? ' checked' : '') + ' /> ' + escapeHtml(opt) + '</label>';
+    }).join('') + '</div>';
+  }
+  function emptyInstruction() {
+    return {
+      id: null, title: '', company: '', client_name: '', branch: '', software_name: '', body: '', status: 'draft',
+      address: '', contact_person: '', contact_number: '', training_days: '',
+      day1_schedule: '', day2_schedule: '', day3_schedule: '', day4_schedule: '', day5_schedule: '',
+      target_opening_date: '', service_type: '', product_client_type: '', product_scope: '',
+      software_type: '', hardware_setup: '', hardware_model_brand: '', mall_hookup: '',
+      hookup_connection_type: '', networking_cabling: '', bir_permit_type: '', bir_vat_type: '',
+      payment_collection_type: '', collectibles_amount: '', collection_contact_person: '',
+      collection_contact_number: '', collection_designation: '', collection_receipt_notes: '',
+      sales_representative: '', date_request: '', implementer_representative: '', implementation_coordinator: '',
+    };
+  }
+  function instructionFormHtml(i) {
+    i = i || emptyInstruction();
+    return `
+      <input type="hidden" id="instr-id" value="${escapeHtml(i.id || '')}" />
+      <div class="instr-section" style="border-top:none;padding-top:0;margin-top:0">
+        <h4>CUSTOMER DETAILS</h4>
+        <div class="form-group"><label for="instr-title">Instruction title</label>
+          <input id="instr-title" maxlength="160" value="${escapeHtml(i.title)}" placeholder="e.g. BAHN MI KITCHEN – SM PASIG" /></div>
+        <div class="form-group"><label for="instr-company">Company</label>
+          ${setupComboboxHtml('instr-company', 'instrCompany', 'companies', i.company, 'Type to search company…')}</div>
+        <div class="form-group"><label for="instr-client">Client name</label>
+          ${setupComboboxHtml('instr-client', 'instrClient', 'clients', i.client_name, 'Type to search client…')}</div>
+        <div class="form-group"><label for="instr-address">Complete address</label>
+          <textarea id="instr-address" maxlength="500" rows="2">${escapeHtml(i.address)}</textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label for="instr-contact-person">Contact person</label>
+            <input id="instr-contact-person" maxlength="120" value="${escapeHtml(i.contact_person)}" /></div>
+          <div class="form-group"><label for="instr-contact-number">Contact number</label>
+            <input id="instr-contact-number" maxlength="80" value="${escapeHtml(i.contact_number)}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label for="instr-branch">Branch (optional)</label>
+            ${setupComboboxHtml('instr-branch', 'instrBranch', 'branches', i.branch, 'Type to search branch…')}</div>
+          <div class="form-group"><label for="instr-software-name">Software name (optional)</label>
+            ${setupComboboxHtml('instr-software-name', 'instrSoftwareName', 'software', i.software_name, 'Type to search software…')}</div>
+        </div>
+        <div class="form-group"><label for="instr-status">Status</label>
+          <select id="instr-status">
+            <option value="draft" ${i.status === 'draft' ? 'selected' : ''}>Draft</option>
+            <option value="ready" ${i.status === 'ready' ? 'selected' : ''}>Ready</option>
+            <option value="cancelled" ${i.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select></div>
+      </div>
+      <div class="instr-section">
+        <h4>Training and Guidelines (Implementation days)</h4>
+        ${checkGridHtml('instr_training_days', INSTR_TRAINING_DAYS, i.training_days)}
+        <div class="form-group"><label for="instr-day1">DAY 1 — date/time &amp; activity</label>
+          <input id="instr-day1" maxlength="240" value="${escapeHtml(i.day1_schedule)}" placeholder="e.g. Sept 25,2026 10:00AM TO 5:00PM – Installation…" /></div>
+        <div class="form-group"><label for="instr-day2">DAY 2</label><input id="instr-day2" maxlength="240" value="${escapeHtml(i.day2_schedule)}" /></div>
+        <div class="form-group"><label for="instr-day3">DAY 3</label><input id="instr-day3" maxlength="240" value="${escapeHtml(i.day3_schedule)}" /></div>
+        <div class="form-group"><label for="instr-day4">DAY 4</label><input id="instr-day4" maxlength="240" value="${escapeHtml(i.day4_schedule)}" /></div>
+        <div class="form-group"><label for="instr-day5">DAY 5</label><input id="instr-day5" maxlength="240" value="${escapeHtml(i.day5_schedule)}" /></div>
+        <div class="form-group"><label for="instr-target-opening">Target Date (Store Opening)</label>
+          <input id="instr-target-opening" type="date" value="${escapeHtml(i.target_opening_date || '')}" /></div>
+      </div>
+      <div class="instr-section">
+        <h4>Special Instruction</h4>
+        <p class="meta" style="font-size:0.72rem;margin:0 0 0.35rem;color:var(--text-dim)">Indicate QUICK SERVICE or FINE DINE-IN</p>
+        ${checkGridHtml('instr_service_type', INSTR_SERVICE_TYPES, i.service_type)}
+        <div class="form-group"><label for="instr-body">Special instruction notes</label>
+          <textarea id="instr-body" maxlength="2000" rows="2">${escapeHtml(i.body)}</textarea></div>
+      </div>
+      <div class="instr-section">
+        <h4>PRODUCT DETAILS</h4>
+        ${checkGridHtml('instr_product_client', INSTR_PRODUCT_CLIENT, i.product_client_type)}
+        ${checkGridHtml('instr_product_scope', INSTR_PRODUCT_SCOPE, i.product_scope)}
+        <h4 style="margin-top:0.65rem">Software Type</h4>
+        ${checkGridHtml('instr_software_type', INSTR_SOFTWARE_TYPES, i.software_type)}
+      </div>
+      <div class="instr-section">
+        <h4>Hardware Setup and Details</h4>
+        ${checkGridHtml('instr_hardware_setup', INSTR_HW_SETUP, i.hardware_setup)}
+        <div class="form-group"><label for="instr-hw-model">HARDWARE model and brand</label>
+          <textarea id="instr-hw-model" maxlength="500" rows="2">${escapeHtml(i.hardware_model_brand)}</textarea></div>
+      </div>
+      <div class="instr-section">
+        <h4>MALL HOOKUP</h4>
+        ${checkGridHtml('instr_mall_hookup', INSTR_MALL, i.mall_hookup)}
+        <div class="form-group"><label for="instr-hookup-conn">Hookup Connection type (Wireless/LAN)</label>
+          <input id="instr-hookup-conn" maxlength="80" value="${escapeHtml(i.hookup_connection_type)}" placeholder="Wireless / LAN" /></div>
+      </div>
+      <div class="instr-section">
+        <h4>NETWORKING / CABLING</h4>
+        ${checkGridHtml('instr_networking', INSTR_NET, i.networking_cabling)}
+      </div>
+      <div class="instr-section">
+        <h4>BIR Permit to Use (PTU)</h4>
+        ${checkGridHtml('instr_bir_permit', INSTR_BIR_PERMIT, i.bir_permit_type)}
+        ${checkGridHtml('instr_bir_vat', INSTR_BIR_VAT, i.bir_vat_type)}
+      </div>
+      <div class="instr-section">
+        <h4>PAYMENT COLLECTION DETAILS</h4>
+        ${checkGridHtml('instr_payment', INSTR_PAYMENT, i.payment_collection_type)}
+        <div class="form-group"><label for="instr-collectibles">Amount of Collectibles</label>
+          <input id="instr-collectibles" maxlength="120" value="${escapeHtml(i.collectibles_amount)}" /></div>
+        <div class="form-row">
+          <div class="form-group"><label for="instr-coll-person">Contact Personnel</label>
+            <input id="instr-coll-person" maxlength="160" value="${escapeHtml(i.collection_contact_person)}" /></div>
+          <div class="form-group"><label for="instr-coll-number">Contact Number</label>
+            <input id="instr-coll-number" maxlength="120" value="${escapeHtml(i.collection_contact_number)}" /></div>
+        </div>
+        <div class="form-group"><label for="instr-coll-desig">Designation</label>
+          <input id="instr-coll-desig" maxlength="120" value="${escapeHtml(i.collection_designation)}" /></div>
+        <div class="form-group"><label for="instr-coll-notes">Collection amount &amp; what to put in Receipt</label>
+          <textarea id="instr-coll-notes" maxlength="500" rows="2">${escapeHtml(i.collection_receipt_notes)}</textarea></div>
+        <p class="meta" style="font-size:0.72rem;color:var(--text-dim)">* Don’t forget CR for DP/Full Payment, DR and Warranty Certificate</p>
+      </div>
+      <div class="instr-section">
+        <h4>Sign-off</h4>
+        <div class="form-group"><label for="instr-sales-rep">Sales Representative</label>
+          <input id="instr-sales-rep" maxlength="120" value="${escapeHtml(i.sales_representative)}" /></div>
+        <div class="form-group"><label for="instr-date-request">Date Request</label>
+          <input id="instr-date-request" maxlength="120" value="${escapeHtml(i.date_request)}" placeholder="e.g. Sept 17, 2026" /></div>
+        <div class="form-group"><label for="instr-implementer">Implementer Representative</label>
+          <input id="instr-implementer" maxlength="120" value="${escapeHtml(i.implementer_representative)}" /></div>
+        <div class="form-group"><label for="instr-coordinator">IMPLEMENTATION Coordinator</label>
+          <input id="instr-coordinator" maxlength="120" value="${escapeHtml(i.implementation_coordinator)}" /></div>
+      </div>
+    `;
+  }
+  function readChecked(name) {
+    return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map((el) => el.value);
+  }
+  function readInstructionForm() {
+    const company = (document.getElementById('instr-company')?.value || '').trim();
+    const client = (document.getElementById('instr-client')?.value || '').trim();
+    let title = (document.getElementById('instr-title')?.value || '').trim();
+    if (!title) title = [client, company].filter(Boolean).join(' – ') || 'Untitled instruction';
+    return {
+      id: (document.getElementById('instr-id')?.value || '').trim() || null,
+      title, company, client_name: client,
+      branch: (document.getElementById('instr-branch')?.value || '').trim(),
+      software_name: (document.getElementById('instr-software-name')?.value || '').trim(),
+      body: (document.getElementById('instr-body')?.value || '').trim(),
+      status: document.getElementById('instr-status')?.value || 'draft',
+      address: (document.getElementById('instr-address')?.value || '').trim(),
+      contact_person: (document.getElementById('instr-contact-person')?.value || '').trim(),
+      contact_number: (document.getElementById('instr-contact-number')?.value || '').trim(),
+      training_days: joinCsvFlags(readChecked('instr_training_days')),
+      day1_schedule: (document.getElementById('instr-day1')?.value || '').trim(),
+      day2_schedule: (document.getElementById('instr-day2')?.value || '').trim(),
+      day3_schedule: (document.getElementById('instr-day3')?.value || '').trim(),
+      day4_schedule: (document.getElementById('instr-day4')?.value || '').trim(),
+      day5_schedule: (document.getElementById('instr-day5')?.value || '').trim(),
+      target_opening_date: document.getElementById('instr-target-opening')?.value || '',
+      service_type: joinCsvFlags(readChecked('instr_service_type')),
+      product_client_type: joinCsvFlags(readChecked('instr_product_client')),
+      product_scope: joinCsvFlags(readChecked('instr_product_scope')),
+      software_type: joinCsvFlags(readChecked('instr_software_type')),
+      hardware_setup: joinCsvFlags(readChecked('instr_hardware_setup')),
+      hardware_model_brand: (document.getElementById('instr-hw-model')?.value || '').trim(),
+      mall_hookup: joinCsvFlags(readChecked('instr_mall_hookup')),
+      hookup_connection_type: (document.getElementById('instr-hookup-conn')?.value || '').trim(),
+      networking_cabling: joinCsvFlags(readChecked('instr_networking')),
+      bir_permit_type: joinCsvFlags(readChecked('instr_bir_permit')),
+      bir_vat_type: joinCsvFlags(readChecked('instr_bir_vat')),
+      payment_collection_type: joinCsvFlags(readChecked('instr_payment')),
+      collectibles_amount: (document.getElementById('instr-collectibles')?.value || '').trim(),
+      collection_contact_person: (document.getElementById('instr-coll-person')?.value || '').trim(),
+      collection_contact_number: (document.getElementById('instr-coll-number')?.value || '').trim(),
+      collection_designation: (document.getElementById('instr-coll-desig')?.value || '').trim(),
+      collection_receipt_notes: (document.getElementById('instr-coll-notes')?.value || '').trim(),
+      sales_representative: (document.getElementById('instr-sales-rep')?.value || '').trim(),
+      date_request: (document.getElementById('instr-date-request')?.value || '').trim(),
+      implementer_representative: (document.getElementById('instr-implementer')?.value || '').trim(),
+      implementation_coordinator: (document.getElementById('instr-coordinator')?.value || '').trim(),
+    };
+  }
+  function switchInstrTab(tab) {
+    document.querySelectorAll('#instructions-tabs button').forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-instr-tab') === tab);
+    });
+    document.getElementById('instructions-panel-list')?.classList.toggle('active', tab === 'list');
+    document.getElementById('instructions-panel-form')?.classList.toggle('active', tab === 'form');
+    const listActions = document.getElementById('instructions-list-actions');
+    if (listActions) listActions.hidden = tab !== 'list';
+  }
+  function renderInstructionsList() {
+    const list = document.getElementById('instructions-list');
+    if (!list) return;
+    if (!instructions.length) {
+      list.innerHTML = '<li><span class="meta">No instructions yet. Create a Travel Order / Client Itinerary.</span></li>';
+      return;
+    }
+    list.innerHTML = instructions.map((ins) => {
+      const meta = [ins.client_name || ins.company, ins.status, ins.training_days].filter(Boolean).join(' · ');
+      return '<li><div><strong>' + escapeHtml(ins.title || 'Untitled') + '</strong>'
+        + '<div class="meta">' + escapeHtml(meta) + '</div>'
+        + (ins.address ? '<div class="meta">' + escapeHtml(ins.address) + '</div>' : '')
+        + '</div><div class="ap-actions">'
+        + '<button type="button" class="btn btn-ghost btn-sm" data-edit-instr="' + escapeHtml(ins.id) + '">Edit</button>'
+        + (isAdminRole() ? '<button type="button" class="btn btn-danger btn-sm" data-del-instr="' + escapeHtml(ins.id) + '">Delete</button>' : '')
+        + '</div></li>';
+    }).join('');
+    list.querySelectorAll('[data-edit-instr]').forEach((btn) => {
+      btn.addEventListener('click', () => openInstructionForm(btn.getAttribute('data-edit-instr')));
+    });
+    list.querySelectorAll('[data-del-instr]').forEach((btn) => {
+      btn.addEventListener('click', () => deleteInstruction(btn.getAttribute('data-del-instr')));
+    });
+  }
+  async function openInstructions() {
+    if (!canCreateImplementation()) {
+      alert('Only Sales (create capability) or Admin / Super Admin can manage Implementation Instructions.');
+      return;
+    }
+    await loadSetupMasters();
+    await fetchInstructions();
+    document.getElementById('instructions-backdrop').hidden = false;
+    switchInstrTab('list');
+    renderInstructionsList();
+  }
+  function closeInstructions() {
+    document.getElementById('instructions-backdrop').hidden = true;
+    editingInstructionId = null;
+  }
+  async function openInstructionForm(id) {
+    await loadSetupMasters();
+    const ins = id ? (instructions.find((x) => x.id === id) || emptyInstruction()) : emptyInstruction();
+    editingInstructionId = id || null;
+    const wrap = document.getElementById('instructions-form-wrap');
+    wrap.innerHTML = instructionFormHtml(id ? ins : emptyInstruction());
+    try { wireSetupMasterSelects(wrap); } catch (_) {}
+    switchInstrTab('form');
+  }
+  async function saveInstructionForm() {
+    if (!canCreateImplementation()) return;
+    const payload = readInstructionForm();
+    if (!payload.title) { alert('Enter a title or client/company name.'); return; }
+    try {
+      await runSync('Saving instruction…', async () => {
+        const row = instructionToDb(payload);
+        if (payload.id) {
+          const { data, error } = await supabase.from('implementation_instructions').update(row).eq('id', payload.id).select().single();
+          if (error) throw error;
+          const mapped = mapInstructionFromDb(data);
+          const idx = instructions.findIndex((x) => x.id === mapped.id);
+          if (idx >= 0) instructions[idx] = mapped; else instructions.unshift(mapped);
+        } else {
+          row.created_by = currentUserId();
+          const { data, error } = await supabase.from('implementation_instructions').insert(row).select().single();
+          if (error) throw error;
+          instructions.unshift(mapInstructionFromDb(data));
+        }
+        await writeAudit({
+          action: payload.id ? 'instruction.update' : 'instruction.create',
+          entityType: 'instruction',
+          entityId: payload.id || (instructions[0] && instructions[0].id),
+          entityLabel: payload.title,
+          details: { status: payload.status, client_name: payload.client_name || null },
+        });
+      });
+      showSuccessToast('Instruction saved');
+      switchInstrTab('list');
+      renderInstructionsList();
+    } catch (err) {
+      alert('Could not save instruction: ' + (err && err.message ? err.message : 'unknown error'));
+    }
+  }
+  async function deleteInstruction(id) {
+    if (!isAdminRole()) return;
+    const ins = instructions.find((x) => x.id === id);
+    if (!ins) return;
+    const ok = window.confirm('Delete instruction “' + (ins.title || 'Untitled') + '”? Linked checklists keep data but lose the link.');
+    if (!ok) return;
+    try {
+      await runSync('Deleting…', async () => {
+        const { error } = await supabase.from('implementation_instructions').delete().eq('id', id);
+        if (error) throw error;
+        instructions = instructions.filter((x) => x.id !== id);
+        state.projects.forEach((p) => { if (p.instructionId === id) p.instructionId = null; });
+      });
+      renderInstructionsList();
+      render();
+    } catch (err) {
+      alert('Could not delete: ' + (err.message || 'unknown error'));
+    }
+  }
+
+
   // ── Groups admin (super) ──
   function openAdmin() {
     if (!isSuperUser()) return;
@@ -4484,8 +5051,18 @@
     } else {
       gList.innerHTML = groups.map((g) => {
         const count = groupMembers.filter((m) => m.groupId === g.id).length;
+        const badges = [
+          ['create', 'Create', !!g.canCreateImplementation],
+          ['assign', 'Assign', !!g.canAssignImplementation],
+          ['execute', 'Execute', !!g.canExecuteChecklist],
+        ].map(([key, label, on]) => {
+          const cls = 'cap-badge' + (on ? ' on' : '') + (isSuperAdmin() ? ' btnish' : '');
+          const title = isSuperAdmin() ? 'Click to toggle ' + label : label + (on ? ' enabled' : ' off');
+          return '<button type="button" class="' + cls + '" data-cap-toggle="' + escapeHtml(g.id) + '" data-cap-key="' + key + '" title="' + escapeHtml(title) + '"' + (isSuperAdmin() ? '' : ' disabled') + '>' + label + '</button>';
+        }).join('');
         return '<li><div><strong>' + escapeHtml(g.name) + '</strong>' +
           (g.description ? '<div class="meta">' + escapeHtml(g.description) + '</div>' : '') +
+          '<div class="meta" style="margin:0.25rem 0">' + badges + '</div>' +
           '<div class="meta">' + count + ' member(s)</div></div>' +
           '<div class="ap-actions">' +
             '<button type="button" class="btn btn-ghost btn-sm" data-rename-group="' + escapeHtml(g.id) + '">Rename</button>' +
@@ -4497,6 +5074,12 @@
       });
       gList.querySelectorAll('[data-delete-group]').forEach((btn) => {
         btn.addEventListener('click', () => deleteGroup(btn.getAttribute('data-delete-group')));
+      });
+      gList.querySelectorAll('[data-cap-toggle]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!isSuperAdmin()) return;
+          toggleGroupCapability(btn.getAttribute('data-cap-toggle'), btn.getAttribute('data-cap-key'));
+        });
       });
     }
 
@@ -4556,6 +5139,31 @@
     });
   }
 
+  async function toggleGroupCapability(groupId, key) {
+    const g = getGroup(groupId);
+    if (!g || !isSuperAdmin()) return;
+    const map = {
+      create: 'can_create_implementation',
+      assign: 'can_assign_implementation',
+      execute: 'can_execute_checklist',
+    };
+    const col = map[key];
+    if (!col) return;
+    const camel = key === 'create' ? 'canCreateImplementation' : (key === 'assign' ? 'canAssignImplementation' : 'canExecuteChecklist');
+    const next = !g[camel];
+    try {
+      await runSync('Updating capability…', async () => {
+        const { error } = await supabase.from('groups').update({ [col]: next }).eq('id', groupId);
+        if (error) throw error;
+        g[camel] = next;
+      });
+      refreshAdminPanels();
+      showSuccessToast('Capability updated');
+    } catch (err) {
+      alert('Could not update flag: ' + (err.message || 'unknown error'));
+    }
+  }
+
   async function createGroup() {
     const name = (document.getElementById('admin-group-name').value || '').trim();
     const description = (document.getElementById('admin-group-desc').value || '').trim();
@@ -4564,7 +5172,14 @@
       await runSync('Creating group…', async () => {
         const { data, error } = await supabase.from('groups').insert({ name, description: description || null }).select().single();
         if (error) throw error;
-        groups.push({ id: data.id, name: data.name, description: data.description || '' });
+        groups.push({
+          id: data.id,
+          name: data.name,
+          description: data.description || '',
+          canCreateImplementation: !!data.can_create_implementation,
+          canAssignImplementation: !!data.can_assign_implementation,
+          canExecuteChecklist: !!data.can_execute_checklist,
+        });
         groups.sort((a, b) => a.name.localeCompare(b.name));
         await writeAudit({
           action: 'group.create',
@@ -4732,6 +5347,22 @@
     }
   }
 
+  document.getElementById('btn-instructions')?.addEventListener('click', openInstructions);
+  document.getElementById('instructions-close')?.addEventListener('click', closeInstructions);
+  document.getElementById('instr-new')?.addEventListener('click', () => openInstructionForm(null));
+  document.getElementById('instr-refresh')?.addEventListener('click', async () => {
+    await fetchInstructions();
+    renderInstructionsList();
+  });
+  document.getElementById('instr-form-cancel')?.addEventListener('click', () => switchInstrTab('list'));
+  document.getElementById('instr-form-save')?.addEventListener('click', saveInstructionForm);
+  document.getElementById('instructions-backdrop')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('instructions-backdrop')) closeInstructions();
+  });
+  document.querySelectorAll('#instructions-tabs button').forEach((b) => {
+    b.addEventListener('click', () => switchInstrTab(b.getAttribute('data-instr-tab')));
+  });
+
   document.getElementById('btn-admin').addEventListener('click', openAdmin);
   document.getElementById('admin-close').addEventListener('click', closeAdmin);
   document.getElementById('admin-backdrop').addEventListener('click', (e) => {
@@ -4890,7 +5521,7 @@
     const trimmed = String(name || '').trim();
     if (!trimmed) return null;
     if (!supabase) throw new Error('Not connected');
-    if (!isAdminRole()) throw new Error('Only Admin / Super Admin can add masters');
+    if (!canCreateImplementation()) throw new Error('Only Sales (create capability) or Admin / Super Admin can add masters');
     const table =
       kind === 'companies' ? 'setup_companies'
         : kind === 'clients' ? 'setup_clients'
@@ -4964,11 +5595,11 @@
 
     function filterFor(kind) {
       if (kind === 'clients') {
-        const el = form.querySelector('#f-company');
+        const el = form.querySelector('#f-company, #instr-company');
         return { companyName: el ? String(el.value || '').trim() : '' };
       }
       if (kind === 'branches') {
-        const el = form.querySelector('#f-client');
+        const el = form.querySelector('#f-client, #instr-client');
         return { clientName: el ? String(el.value || '').trim() : '' };
       }
       return {};
@@ -5016,11 +5647,11 @@
         });
       }
       if (q && !exact) {
-        if (isAdminRole()) {
+        if (canCreateImplementation()) {
           html += '<li class="combo-add" role="option" data-add="' + escapeHtml(raw.trim()) + '">' +
             '+ Add "' + escapeHtml(raw.trim()) + '" as new ' + kindNoun(kind) + '</li>';
         } else {
-          html += '<li class="combo-empty">No match — ask an Admin to add this</li>';
+          html += '<li class="combo-empty">No match — ask Sales/Admin to add this</li>';
         }
       }
       list.innerHTML = html;
@@ -5032,18 +5663,18 @@
       const input = combo.querySelector('.combo-input');
       const trimmed = String(name || '').trim();
       if (!trimmed || !kind) return;
-      if (!isAdminRole()) {
-        alert('Only Admin / Super Admin can add masters');
+      if (!canCreateImplementation()) {
+        alert('Only Sales (create capability) or Admin / Super Admin can add masters');
         return;
       }
       try {
         const extra = {};
         if (kind === 'clients') {
-          const cid = setupCompanyIdByName(form.querySelector('#f-company')?.value || '');
+          const cid = setupCompanyIdByName(form.querySelector('#f-company, #instr-company')?.value || '');
           if (cid) extra.company_id = cid;
         }
         if (kind === 'branches') {
-          const clid = setupClientIdByName(form.querySelector('#f-client')?.value || '');
+          const clid = setupClientIdByName(form.querySelector('#f-client, #instr-client')?.value || '');
           if (clid) extra.client_id = clid;
         }
         const row = await insertSetupMaster(kind, trimmed, extra);
@@ -5175,8 +5806,8 @@
   }
 
   function openSetup() {
-    if (!isAdminRole()) {
-      alert('Only Admin / Super Admin can manage Setup masters.');
+    if (!canCreateImplementation()) {
+      alert('Only Sales (create capability) or Admin / Super Admin can manage Setup masters.');
       return;
     }
     document.getElementById('setup-backdrop').hidden = false;
@@ -5263,7 +5894,7 @@
   }
 
   async function addSetupFromPanel(kind) {
-    if (!isAdminRole()) return;
+    if (!canCreateImplementation()) return;
     try {
       if (kind === 'companies') {
         const input = document.getElementById('setup-company-name');
@@ -5300,7 +5931,7 @@
   }
 
   async function deleteSetupMaster(kind, id, name) {
-    if (!isAdminRole() || !id) return;
+    if (!canCreateImplementation() || !id) return;
     const label =
       kind === 'companies' ? 'company'
         : kind === 'clients' ? 'client'
@@ -5514,14 +6145,15 @@
       onSubmit(data) {
         const draft = {
           name: data.name.trim() || 'Untitled implementation',
-          description: data.description.trim(),
-          status: data.status,
+          description: (data.description || '').trim(),
+          status: data.status || 'active',
           company: (data.company || '').trim(),
           clientName: (data.clientName || '').trim(),
           branch: (data.branch || '').trim(),
           softwareName: (data.softwareName || '').trim(),
           targetDate: data.targetDate || '',
           groupId: data.groupId || null,
+          instructionId: data.instructionId || null,
         };
         const assigneeIds = Array.isArray(data.assigneeIds) ? data.assigneeIds : (data.assigneeIds ? [data.assigneeIds] : []);
         (async () => {
@@ -5536,7 +6168,7 @@
               const mapped = mapProjectFromDb(row);
               state.projects.push(mapped);
               state.selectedProjectId = mapped.id;
-              await syncProjectAssignees(mapped.id, assigneeIds);
+              if (canAssignImplementation()) await syncProjectAssignees(mapped.id, assigneeIds);
               await writeAudit({
                 action: 'project.create',
                 entityType: 'project',
@@ -5564,7 +6196,7 @@
   async function editProject(id) {
     const p = getProject(id);
     if (!p) return;
-    if (!canManageStructure()) {
+    if (!canManageStructure() && !canAssignImplementation()) {
       alert('Your role can only fill the checklist (update item status).');
       return;
     }
@@ -5575,15 +6207,16 @@
       onSubmit(data) {
         const prev = { ...p };
         const assigneeIds = Array.isArray(data.assigneeIds) ? data.assigneeIds : (data.assigneeIds ? [data.assigneeIds] : []);
-        p.name = data.name.trim() || 'Untitled implementation';
-        p.description = data.description.trim();
-        p.status = data.status;
+        p.name = (data.name || '').trim() || 'Untitled implementation';
+        p.description = (data.description || '').trim();
+        p.status = data.status || p.status || 'active';
         p.company = (data.company || '').trim();
         p.clientName = (data.clientName || '').trim();
         p.branch = (data.branch || '').trim();
         p.softwareName = (data.softwareName || '').trim();
         p.targetDate = data.targetDate || '';
         p.groupId = data.groupId || null;
+        p.instructionId = data.instructionId || null;
         render();
         (async () => {
           try {
@@ -5593,7 +6226,7 @@
                 .update(projectToDb(p))
                 .eq('id', id);
               if (error) throw error;
-              await syncProjectAssignees(id, assigneeIds);
+              if (canAssignImplementation()) await syncProjectAssignees(id, assigneeIds);
               await writeAudit({
                 action: 'project.update',
                 entityType: 'project',
@@ -5716,25 +6349,54 @@
 
   function assigneeCheckboxesHtml(projectId) {
     const selected = new Set(assigneesForProject(projectId || '').map((a) => a.userId));
-    const profiles = (assignableProfiles.length ? assignableProfiles : knownProfiles)
+    const implIds = implementationTeamUserIds();
+    const preferImpl = canAssignImplementation() && (!isAdminRole() || implIds.size > 0);
+    let profiles = (assignableProfiles.length ? assignableProfiles : knownProfiles)
       .filter((p) => {
         const role = normalizeRole(p.role);
         return role === 'user' || role === 'admin';
       })
-      .slice()
-      .sort((a, b) => String(a.email || '').localeCompare(String(b.email || '')));
-    if (!profiles.length) {
-      return '<p class="meta" style="font-size:0.75rem;color:var(--text-dim)">No User/Admin profiles found to assign. Create accounts first.</p>';
+      .slice();
+    if (preferImpl && implIds.size) {
+      // Helpdesk: prefer Implementation Team members; keep currently selected even if outside team
+      profiles = profiles.filter((p) => implIds.has(p.user_id) || selected.has(p.user_id));
     }
-    return '<div class="assignee-list">' + profiles.map((p) => {
+    profiles.sort((a, b) => {
+      const ai = implIds.has(a.user_id) ? 0 : 1;
+      const bi = implIds.has(b.user_id) ? 0 : 1;
+      if (ai !== bi) return ai - bi;
+      return String(a.email || '').localeCompare(String(b.email || ''));
+    });
+    if (!profiles.length) {
+      return '<p class="meta" style="font-size:0.75rem;color:var(--text-dim)">'
+        + (preferImpl && implIds.size === 0
+          ? 'No Implementation Team members yet. Add users to that group first.'
+          : 'No User/Admin profiles found to assign. Create accounts first.')
+        + '</p>';
+    }
+    const hint = preferImpl && implIds.size
+      ? '<p class="meta" style="font-size:0.72rem;color:var(--text-dim);margin:0 0 0.35rem">Showing <strong>Implementation Team</strong> members (Helpdesk assign).</p>'
+      : '';
+    return hint + '<div class="assignee-list">' + profiles.map((p) => {
       const id = p.user_id;
       const checked = selected.has(id) ? ' checked' : '';
       const label = escapeHtml(profileLabel(p));
       const role = escapeHtml(normalizeRole(p.role));
+      const team = implIds.has(id) ? ' <span class="meta">Implementation Team</span>' : '';
       const inactive = p.is_active === false ? ' <span class="meta">(inactive)</span>' : '';
       return '<label><input type="checkbox" name="assigneeIds" value="' + escapeHtml(id) + '"' + checked + ' />'
-        + '<span>' + label + ' <span class="meta">' + role + '</span>' + inactive + '</span></label>';
+        + '<span>' + label + ' <span class="meta">' + role + '</span>' + team + inactive + '</span></label>';
     }).join('') + '</div>';
+  }
+
+  function instructionOptionsHtml(selectedId) {
+    const opts = ['<option value="">— No linked instruction —</option>'];
+    const list = (instructions || []).slice().sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    list.forEach((ins) => {
+      const label = (ins.title || 'Untitled') + (ins.client_name ? ' · ' + ins.client_name : '') + (ins.status ? ' (' + ins.status + ')' : '');
+      opts.push('<option value="' + escapeHtml(ins.id) + '"' + (selectedId === ins.id ? ' selected' : '') + '>' + escapeHtml(label) + '</option>');
+    });
+    return opts.join('');
   }
 
   function projectFields(p) {
@@ -5743,12 +6405,20 @@
     const branch = p.branch ?? '';
     const softwareName = p.softwareName ?? '';
     const targetDate = p.targetDate ?? '';
-    const showAssign = canManageStructure();
+    const showSetup = canCreateImplementation();
+    const showAssign = canAssignImplementation();
+    const showStruct = canManageStructure();
     return `
       <div class="form-group">
-        <label for="f-name">Implementation title</label>
-        <input id="f-name" name="name" required maxlength="120" value="${escapeHtml(p.name)}" placeholder="e.g. Tuan Tuan Greenhills" />
+        <label for="f-name">Checklist title</label>
+        <input id="f-name" name="name" required maxlength="120" value="${escapeHtml(p.name)}" placeholder="e.g. Tuan Tuan Greenhills checklist" ${showStruct ? '' : 'readonly'} />
       </div>
+      <div class="form-group">
+        <label for="f-instruction">Linked Implementation Instruction</label>
+        <select id="f-instruction" name="instructionId">${instructionOptionsHtml(p.instructionId || '')}</select>
+        <p class="meta" style="font-size:0.72rem;color:var(--text-dim);margin:0.25rem 0 0">Sales creates instructions separately. Link an existing Travel Order / Client Itinerary here.</p>
+      </div>
+      ${showSetup ? `
       <div class="form-group">
         <label for="f-company">Company</label>
         ${setupComboboxHtml('f-company', 'company', 'companies', company, 'Type to search company…')}
@@ -5766,21 +6436,28 @@
           <label for="f-software">Software name</label>
           ${setupComboboxHtml('f-software', 'softwareName', 'software', softwareName, 'Type to search software…')}
         </div>
-      </div>
+      </div>` : `
+      <input type="hidden" name="company" value="${escapeHtml(company)}" />
+      <input type="hidden" name="clientName" value="${escapeHtml(clientName)}" />
+      <input type="hidden" name="branch" value="${escapeHtml(branch)}" />
+      <input type="hidden" name="softwareName" value="${escapeHtml(softwareName)}" />
+      `}
       <div class="form-group">
         <label for="f-target">Target date</label>
-        <input id="f-target" name="targetDate" type="date" value="${escapeHtml(targetDate)}" />
+        <input id="f-target" name="targetDate" type="date" value="${escapeHtml(targetDate)}" ${showStruct || showAssign ? '' : 'readonly'} />
       </div>
+      ${showStruct ? `
       <div class="form-group">
         <label for="f-group">Department / group</label>
         <select id="f-group" name="groupId">${memberGroupOptionsHtml(p.groupId || '')}</select>
-      </div>
+      </div>` : `<input type="hidden" name="groupId" value="${escapeHtml(p.groupId || '')}" />`}
       ${showAssign ? `
       <div class="form-group">
         <label>Assign to users</label>
-        <p class="meta" style="font-size:0.72rem;color:var(--text-dim);margin:0 0 0.35rem">Users only see implementations assigned to them. Select one or more User (or Admin) accounts.</p>
+        <p class="meta" style="font-size:0.72rem;color:var(--text-dim);margin:0 0 0.35rem">Prefer <strong>Implementation Team</strong> members. Assignees can execute the checklist.</p>
         ${assigneeCheckboxesHtml(p.id)}
       </div>` : ''}
+      ${showStruct ? `
       <div class="form-group">
         <label for="f-desc">Description (optional)</label>
         <textarea id="f-desc" name="description" maxlength="500">${escapeHtml(p.description || '')}</textarea>
@@ -5792,7 +6469,10 @@
           <option value="on-hold" ${p.status === 'on-hold' ? 'selected' : ''}>On hold</option>
           <option value="done" ${p.status === 'done' ? 'selected' : ''}>Done</option>
         </select>
-      </div>
+      </div>` : `
+      <input type="hidden" name="description" value="${escapeHtml(p.description || '')}" />
+      <input type="hidden" name="status" value="${escapeHtml(p.status || 'active')}" />
+      `}
     `;
   }
 
@@ -6615,6 +7295,10 @@
   function toggleTask(id) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
+    if (!canExecuteChecklist(t.projectId)) {
+      alert('Only Implementation Team (execute), assignees, or Admin can check/uncheck items.');
+      return;
+    }
     const prevStatus = t.status;
     let nextStatus = prevStatus;
     if (t.status === 'pending') {
@@ -6654,6 +7338,10 @@
   function addTaskRemarkOnly(id) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
+    if (!canExecuteChecklist(t.projectId)) {
+      alert('Only Implementation Team (execute), assignees, or Admin can add remarks.');
+      return;
+    }
     openModal({
       title: 'Add remark',
       fields: `
@@ -6693,6 +7381,10 @@
   function addProjectRemark(projectId) {
     const project = getProject(projectId);
     if (!project) return;
+    if (!canExecuteChecklist(projectId)) {
+      alert('Only Implementation Team (execute), assignees, or Admin can add remarks.');
+      return;
+    }
     const items = projectTasks(projectId).slice().sort((a, b) => {
       const sa = taskSection(a.title);
       const sb = taskSection(b.title);
@@ -6855,6 +7547,10 @@
     if (e.key !== 'Escape') return;
     if (!document.getElementById('confirm-backdrop').hidden) {
       closeConfirm(false);
+      return;
+    }
+    if (!document.getElementById('instructions-backdrop')?.hidden) {
+      closeInstructions();
       return;
     }
     if (!document.getElementById('setup-backdrop')?.hidden) {
@@ -7129,10 +7825,11 @@
       const stats = taskStats(projectTasks(p.id));
       const active = p.id === state.selectedProjectId;
       const pendingDel = isDeletePending('project', p.id);
-      const actions = canStruct
+      const canEdit = canStruct || canAssignImplementation();
+      const actions = canEdit
         ? (`<div class="project-actions">
-            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="Rename / edit" aria-label="Edit implementation">✎</button>
-            <button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="${pendingDel ? 'Delete pending approval' : (canDirectDelete() ? 'Delete implementation' : 'Request delete approval')}" aria-label="Delete implementation" ${pendingDel ? 'disabled' : ''}>✕</button>
+            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="${canStruct ? 'Rename / edit' : 'Assign users'}" aria-label="Edit implementation">✎</button>
+            ${canStruct ? `<button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="${pendingDel ? 'Delete pending approval' : (canDirectDelete() ? 'Delete implementation' : 'Request delete approval')}" aria-label="Delete implementation" ${pendingDel ? 'disabled' : ''}>✕</button>` : ''}
           </div>`)
         : '';
       return `
@@ -7243,6 +7940,10 @@
         <div class="fact">
           <span class="fact-label">Target date</span>
           <span class="fact-value ${targetCls}">${project.targetDate ? formatDue(project.targetDate) : 'Not set'}</span>
+        </div>
+        <div class="fact" style="grid-column:1/-1">
+          <span class="fact-label">Linked instruction</span>
+          <span class="fact-value ${project.instructionId ? '' : 'empty'}">${project.instructionId ? escapeHtml(instructionLabel(project.instructionId)) : 'Not linked'}</span>
         </div>
         <div class="fact" style="grid-column:1/-1">
           <span class="fact-label">Assigned users</span>
