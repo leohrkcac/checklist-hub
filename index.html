@@ -1044,6 +1044,62 @@
       gap: 0.75rem;
     }
 
+    /* Searchable setup-master combobox */
+    .combo {
+      position: relative;
+    }
+    .combo-input {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: border-color 0.15s;
+    }
+    .combo-input:focus {
+      border-color: var(--border-focus);
+      outline: none;
+    }
+    .combo-list {
+      position: absolute;
+      z-index: 40;
+      left: 0;
+      right: 0;
+      top: calc(100% + 2px);
+      margin: 0;
+      padding: 0.25rem 0;
+      list-style: none;
+      max-height: 220px;
+      overflow-y: auto;
+      background: var(--bg-elevated, var(--bg-card, #1a1f2e));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .combo-option,
+    .combo-add,
+    .combo-empty {
+      padding: 0.45rem 0.7rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .combo-option:hover,
+    .combo-add:hover {
+      background: var(--bg-hover, rgba(255,255,255,0.06));
+    }
+    .combo-add {
+      color: var(--accent, #6ea8fe);
+      font-weight: 600;
+      border-top: 1px solid var(--border);
+      margin-top: 0.15rem;
+    }
+    .combo-empty {
+      cursor: default;
+      color: var(--text-dim, var(--text-muted));
+      font-size: 0.8rem;
+    }
+
     .modal-actions {
       display: flex;
       justify-content: flex-end;
@@ -1982,6 +2038,9 @@
         <button type="button" class="btn btn-ghost btn-sm" id="btn-audit-log" title="View your audit log">
           Audit log
         </button>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-setup" title="Manage Company / Client / Branch / Software masters" hidden>
+          Setup
+        </button>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-admin" title="Manage groups and departments" hidden>
           Groups
         </button>
@@ -2154,6 +2213,58 @@
     </div>
   </div>
 
+  <!-- Setup masters (admin + super_admin) -->
+  <div class="modal-backdrop" id="setup-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="setup-title">
+    <div class="modal modal-wide" id="setup-modal">
+      <h3 id="setup-title">Setup</h3>
+      <p class="meta" style="color:var(--text-dim);font-size:0.75rem;margin:0 0 0.75rem">Admin / Super Admin — manage master values used in New / Edit implementation dropdowns. Chosen names are still saved onto each implementation.</p>
+      <div class="admin-tabs" role="tablist" id="setup-tabs">
+        <button type="button" class="active" data-setup-tab="companies">Company</button>
+        <button type="button" data-setup-tab="clients">Client</button>
+        <button type="button" data-setup-tab="branches">Branch</button>
+        <button type="button" data-setup-tab="software">Software</button>
+      </div>
+      <div id="setup-panel-companies" class="admin-section active">
+        <div class="admin-row">
+          <input id="setup-company-name" maxlength="120" placeholder="Company name" />
+          <button type="button" class="btn btn-primary btn-sm" id="setup-company-add">Add</button>
+        </div>
+        <ul class="admin-list" id="setup-companies-list"></ul>
+      </div>
+      <div id="setup-panel-clients" class="admin-section">
+        <div class="admin-row">
+          <input id="setup-client-name" maxlength="120" placeholder="Client name" />
+          <select id="setup-client-company" title="Optional company link">
+            <option value="">— Company (optional) —</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" id="setup-client-add">Add</button>
+        </div>
+        <ul class="admin-list" id="setup-clients-list"></ul>
+      </div>
+      <div id="setup-panel-branches" class="admin-section">
+        <div class="admin-row">
+          <input id="setup-branch-name" maxlength="120" placeholder="Branch / site name" />
+          <select id="setup-branch-client" title="Optional client link">
+            <option value="">— Client (optional) —</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" id="setup-branch-add">Add</button>
+        </div>
+        <ul class="admin-list" id="setup-branches-list"></ul>
+      </div>
+      <div id="setup-panel-software" class="admin-section">
+        <div class="admin-row">
+          <input id="setup-software-name" maxlength="120" placeholder="Software name e.g. Point of Sale" />
+          <button type="button" class="btn btn-primary btn-sm" id="setup-software-add">Add</button>
+        </div>
+        <ul class="admin-list" id="setup-software-list"></ul>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="setup-refresh">Refresh</button>
+        <button type="button" class="btn btn-primary" id="setup-close">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Users (super_admin) -->
   <div class="modal-backdrop" id="users-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="users-title">
     <div class="modal modal-wide" id="users-modal">
@@ -2250,6 +2361,8 @@
   let taskRemarks = [];
   /** @type {{ user_id: string, email: string, role: string, is_active?: boolean, full_name?: string }[]} */
   let assignableProfiles = [];
+  /** @type {{ companies: {id:string,name:string}[], clients: {id:string,name:string,company_id?:string|null}[], software: {id:string,name:string}[], branches: {id:string,name:string,client_id?:string|null}[] }} */
+  let setupMasters = { companies: [], clients: [], software: [], branches: [] };
 
   /** Map legacy UI/DB roles → canonical v2 roles. */
   function normalizeRole(role) {
@@ -2941,6 +3054,7 @@
     setSync('syncing', 'Loading…');
     await fetchGroupsAndMembers();
     if (canManageStructure()) await fetchAssignableProfiles();
+    await loadSetupMasters();
     const [projRes, taskRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: true }),
       supabase.from('tasks').select('*').order('lineup_order', { ascending: true, nullsFirst: false }),
@@ -3883,6 +3997,7 @@
   function updateRoleBadge() {
     const badge = document.getElementById('user-role-badge');
     const approvalsBtn = document.getElementById('btn-delete-approvals');
+    const setupBtn = document.getElementById('btn-setup');
     const adminBtn = document.getElementById('btn-admin');
     const usersBtn = document.getElementById('btn-users');
     const addProjectBtn = document.getElementById('btn-add-project');
@@ -3902,6 +4017,7 @@
       approvalsBtn.hidden = !canApproveDeletes();
       updatePendingApprovalsButton();
     }
+    if (setupBtn) setupBtn.hidden = !isAdminRole();
     if (adminBtn) adminBtn.hidden = !isSuperAdmin();
     if (usersBtn) usersBtn.hidden = !isSuperAdmin();
     if (addProjectBtn) {
@@ -4571,6 +4687,584 @@
 
 
 
+
+  // ── Setup masters (Company / Client / Branch / Software) ──
+  const SETUP_ADD_VALUE = '__add_new__';
+
+  async function loadSetupMasters() {
+    const empty = { companies: [], clients: [], software: [], branches: [] };
+    if (!supabase) {
+      setupMasters = empty;
+      return setupMasters;
+    }
+    try {
+      const [cRes, clRes, sRes, bRes] = await Promise.all([
+        supabase.from('setup_companies').select('id, name').order('name', { ascending: true }),
+        supabase.from('setup_clients').select('id, name, company_id').order('name', { ascending: true }),
+        supabase.from('setup_software').select('id, name').order('name', { ascending: true }),
+        supabase.from('setup_branches').select('id, name, client_id').order('name', { ascending: true }),
+      ]);
+      if (cRes.error) throw cRes.error;
+      if (clRes.error) throw clRes.error;
+      if (sRes.error) throw sRes.error;
+      if (bRes.error) throw bRes.error;
+      setupMasters = {
+        companies: cRes.data || [],
+        clients: clRes.data || [],
+        software: sRes.data || [],
+        branches: bRes.data || [],
+      };
+    } catch (err) {
+      console.warn('loadSetupMasters failed:', err);
+      setupMasters = empty;
+    }
+    return setupMasters;
+  }
+
+  function setupCompanyNameById(id) {
+    if (!id) return '';
+    const row = setupMasters.companies.find((r) => r.id === id);
+    return row ? row.name : '';
+  }
+  function setupClientNameById(id) {
+    if (!id) return '';
+    const row = setupMasters.clients.find((r) => r.id === id);
+    return row ? row.name : '';
+  }
+  function setupClientIdByName(name) {
+    const n = String(name || '').trim().toLowerCase();
+    if (!n) return null;
+    const row = setupMasters.clients.find((r) => String(r.name || '').trim().toLowerCase() === n);
+    return row ? row.id : null;
+  }
+  function setupCompanyIdByName(name) {
+    const n = String(name || '').trim().toLowerCase();
+    if (!n) return null;
+    const row = setupMasters.companies.find((r) => String(r.name || '').trim().toLowerCase() === n);
+    return row ? row.id : null;
+  }
+
+  /**
+   * Filtered rows for a setup master kind (company→client, client→branch).
+   * @param {'companies'|'clients'|'software'|'branches'} kind
+   * @param {{ companyName?: string, clientName?: string }} [filter]
+   */
+  function getSetupMasterRows(kind, filter) {
+    let rows = (setupMasters[kind] || []).slice();
+    if (kind === 'clients' && filter && filter.companyName) {
+      const cid = setupCompanyIdByName(filter.companyName);
+      if (cid) {
+        const linked = rows.filter((r) => r.company_id === cid || !r.company_id);
+        if (linked.length) rows = linked;
+      }
+    }
+    if (kind === 'branches' && filter && filter.clientName) {
+      const clid = setupClientIdByName(filter.clientName);
+      if (clid) {
+        const linked = rows.filter((r) => r.client_id === clid || !r.client_id);
+        if (linked.length) rows = linked;
+      }
+    }
+    return rows;
+  }
+
+  function setupMasterRowLabel(kind, r) {
+    const name = String(r.name || '').trim();
+    if (!name) return '';
+    if (kind === 'clients' && r.company_id) {
+      const cn = setupCompanyNameById(r.company_id);
+      return name + (cn ? ' · ' + cn : '');
+    }
+    if (kind === 'branches' && r.client_id) {
+      const cln = setupClientNameById(r.client_id);
+      return name + (cln ? ' · ' + cln : '');
+    }
+    return name;
+  }
+
+  /**
+   * Build <option> HTML for a setup master select (legacy / Setup panel helpers).
+   * @param {'companies'|'clients'|'software'|'branches'} kind
+   * @param {string} selectedName
+   * @param {{ companyName?: string, clientName?: string }} [filter]
+   */
+  function setupMasterOptionsHtml(kind, selectedName, filter) {
+    const selected = String(selectedName || '').trim();
+    const rows = getSetupMasterRows(kind, filter);
+    const names = new Set(rows.map((r) => String(r.name || '').trim()).filter(Boolean));
+    let html = '<option value="">— Select —</option>';
+    rows.forEach((r) => {
+      const name = String(r.name || '').trim();
+      if (!name) return;
+      const label = escapeHtml(setupMasterRowLabel(kind, r));
+      const sel = name === selected ? ' selected' : '';
+      html += '<option value="' + escapeHtml(name) + '"' + sel + '>' + label + '</option>';
+    });
+    if (selected && !names.has(selected)) {
+      html += '<option value="' + escapeHtml(selected) + '" selected>' + escapeHtml(selected) + ' (current)</option>';
+    }
+    html += '<option value="' + SETUP_ADD_VALUE + '">+ Add new…</option>';
+    return html;
+  }
+
+  function refillSetupSelect(sel, kind, selectedName, filter) {
+    if (!sel) return;
+    sel.innerHTML = setupMasterOptionsHtml(kind, selectedName, filter);
+  }
+
+  /** Searchable text input + suggestion list for New/Edit implementation fields. */
+  function setupComboboxHtml(inputId, inputName, kind, selectedName, placeholder) {
+    const val = String(selectedName || '').trim();
+    return (
+      '<div class="combo" data-setup-kind="' + escapeHtml(kind) + '">' +
+        '<input type="text" id="' + escapeHtml(inputId) + '" name="' + escapeHtml(inputName) + '" ' +
+          'class="combo-input" autocomplete="off" maxlength="120" ' +
+          'value="' + escapeHtml(val) + '" ' +
+          'placeholder="' + escapeHtml(placeholder || 'Type to search or add…') + '" />' +
+        '<ul class="combo-list" hidden role="listbox"></ul>' +
+      '</div>'
+    );
+  }
+
+  async function insertSetupMaster(kind, name, extra) {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) return null;
+    if (!supabase) throw new Error('Not connected');
+    if (!isAdminRole()) throw new Error('Only Admin / Super Admin can add masters');
+    const table =
+      kind === 'companies' ? 'setup_companies'
+        : kind === 'clients' ? 'setup_clients'
+          : kind === 'software' ? 'setup_software'
+            : kind === 'branches' ? 'setup_branches'
+              : null;
+    if (!table) throw new Error('Unknown setup kind');
+    const payload = { name: trimmed, created_by: currentUserId() };
+    if (kind === 'clients' && extra && extra.company_id) payload.company_id = extra.company_id;
+    if (kind === 'branches' && extra && extra.client_id) payload.client_id = extra.client_id;
+    // Upsert-like: if unique name exists, just reuse
+    const { data, error } = await supabase.from(table).insert(payload).select('id, name').single();
+    if (error) {
+      // Unique violation → fetch existing
+      if (String(error.code) === '23505' || /duplicate|unique/i.test(error.message || '')) {
+        const { data: existing, error: e2 } = await supabase.from(table).select('id, name').eq('name', trimmed).maybeSingle();
+        if (e2) throw e2;
+        if (existing) {
+          await loadSetupMasters();
+          return existing;
+        }
+      }
+      throw error;
+    }
+    await loadSetupMasters();
+    return data;
+  }
+
+  async function promptAddSetupMaster(kind, hint) {
+    const label =
+      kind === 'companies' ? 'Company'
+        : kind === 'clients' ? 'Client'
+          : kind === 'software' ? 'Software'
+            : 'Branch';
+    const name = window.prompt('New ' + label + ' name:' + (hint ? ' ' + hint : ''), '');
+    if (name == null) return null; // cancelled
+    const trimmed = String(name).trim();
+    if (!trimmed) {
+      alert('Name is required.');
+      return null;
+    }
+    try {
+      const extra = {};
+      if (kind === 'clients') {
+        const companyEl = document.getElementById('f-company');
+        const companyName = companyEl ? companyEl.value : '';
+        const cid = setupCompanyIdByName(companyName);
+        if (cid) extra.company_id = cid;
+      }
+      if (kind === 'branches') {
+        const clientEl = document.getElementById('f-client');
+        const clientName = clientEl ? clientEl.value : '';
+        const clid = setupClientIdByName(clientName);
+        if (clid) extra.client_id = clid;
+      }
+      const row = await insertSetupMaster(kind, trimmed, extra);
+      return row ? row.name : trimmed;
+    } catch (err) {
+      alert('Could not add: ' + (err.message || 'unknown error'));
+      return null;
+    }
+  }
+
+  function wireSetupMasterSelects(form) {
+    if (!form) return;
+    const combos = form.querySelectorAll('.combo[data-setup-kind]');
+    // Legacy <select data-setup-kind> fallback
+    const legacySelects = form.querySelectorAll('select[data-setup-kind]');
+    if (!combos.length && !legacySelects.length) return;
+
+    function filterFor(kind) {
+      if (kind === 'clients') {
+        const el = form.querySelector('#f-company');
+        return { companyName: el ? String(el.value || '').trim() : '' };
+      }
+      if (kind === 'branches') {
+        const el = form.querySelector('#f-client');
+        return { clientName: el ? String(el.value || '').trim() : '' };
+      }
+      return {};
+    }
+
+    function kindNoun(kind) {
+      return kind === 'companies' ? 'company'
+        : kind === 'clients' ? 'client'
+          : kind === 'software' ? 'software'
+            : 'branch';
+    }
+
+    function closeList(combo) {
+      const list = combo.querySelector('.combo-list');
+      if (list) list.hidden = true;
+    }
+
+    function renderComboList(combo) {
+      const kind = combo.getAttribute('data-setup-kind');
+      const list = combo.querySelector('.combo-list');
+      const input = combo.querySelector('.combo-input');
+      if (!list || !input || !kind) return;
+      const raw = String(input.value || '');
+      const q = raw.trim().toLowerCase();
+      const rows = getSetupMasterRows(kind, filterFor(kind));
+      const filtered = q
+        ? rows.filter((r) => {
+            const name = String(r.name || '').toLowerCase();
+            const label = setupMasterRowLabel(kind, r).toLowerCase();
+            return name.includes(q) || label.includes(q);
+          })
+        : rows.slice();
+      const exact = rows.some((r) => String(r.name || '').trim().toLowerCase() === q);
+      let html = '';
+      if (!filtered.length && !q) {
+        html = '<li class="combo-empty">No masters yet — type a name to add</li>';
+      } else if (!filtered.length) {
+        html = '<li class="combo-empty">No matches</li>';
+      } else {
+        filtered.slice(0, 60).forEach((r) => {
+          const name = String(r.name || '').trim();
+          if (!name) return;
+          html += '<li class="combo-option" role="option" data-value="' + escapeHtml(name) + '">' +
+            escapeHtml(setupMasterRowLabel(kind, r)) + '</li>';
+        });
+      }
+      if (q && !exact) {
+        if (isAdminRole()) {
+          html += '<li class="combo-add" role="option" data-add="' + escapeHtml(raw.trim()) + '">' +
+            '+ Add "' + escapeHtml(raw.trim()) + '" as new ' + kindNoun(kind) + '</li>';
+        } else {
+          html += '<li class="combo-empty">No match — ask an Admin to add this</li>';
+        }
+      }
+      list.innerHTML = html;
+      list.hidden = false;
+    }
+
+    async function addFromCombo(combo, name) {
+      const kind = combo.getAttribute('data-setup-kind');
+      const input = combo.querySelector('.combo-input');
+      const trimmed = String(name || '').trim();
+      if (!trimmed || !kind) return;
+      if (!isAdminRole()) {
+        alert('Only Admin / Super Admin can add masters');
+        return;
+      }
+      try {
+        const extra = {};
+        if (kind === 'clients') {
+          const cid = setupCompanyIdByName(form.querySelector('#f-company')?.value || '');
+          if (cid) extra.company_id = cid;
+        }
+        if (kind === 'branches') {
+          const clid = setupClientIdByName(form.querySelector('#f-client')?.value || '');
+          if (clid) extra.client_id = clid;
+        }
+        const row = await insertSetupMaster(kind, trimmed, extra);
+        if (input) input.value = row ? row.name : trimmed;
+        closeList(combo);
+      } catch (err) {
+        alert('Could not add: ' + (err.message || 'unknown error'));
+      }
+    }
+
+    combos.forEach((combo) => {
+      const input = combo.querySelector('.combo-input');
+      const list = combo.querySelector('.combo-list');
+      if (!input || !list) return;
+
+      input.addEventListener('focus', () => renderComboList(combo));
+      input.addEventListener('click', () => renderComboList(combo));
+      input.addEventListener('input', () => renderComboList(combo));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeList(combo);
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          renderComboList(combo);
+          const first = list.querySelector('.combo-option, .combo-add');
+          if (first) first.scrollIntoView({ block: 'nearest' });
+          return;
+        }
+        if (e.key === 'Enter' && !list.hidden) {
+          const q = input.value.trim().toLowerCase();
+          const options = [...list.querySelectorAll('.combo-option')];
+          const exactOpt = options.find((el) => (el.getAttribute('data-value') || '').toLowerCase() === q);
+          const addEl = list.querySelector('.combo-add');
+          if (exactOpt) {
+            e.preventDefault();
+            input.value = exactOpt.getAttribute('data-value') || '';
+            closeList(combo);
+          } else if (addEl && isAdminRole()) {
+            e.preventDefault();
+            addFromCombo(combo, addEl.getAttribute('data-add'));
+          } else if (options.length === 1) {
+            e.preventDefault();
+            input.value = options[0].getAttribute('data-value') || '';
+            closeList(combo);
+          }
+        }
+      });
+
+      list.addEventListener('mousedown', (e) => {
+        // Keep focus on input so blur does not close before click
+        e.preventDefault();
+      });
+      list.addEventListener('click', (e) => {
+        const opt = e.target.closest('.combo-option');
+        const add = e.target.closest('.combo-add');
+        if (opt) {
+          input.value = opt.getAttribute('data-value') || '';
+          closeList(combo);
+        } else if (add) {
+          addFromCombo(combo, add.getAttribute('data-add'));
+        }
+      });
+
+      input.addEventListener('blur', () => {
+        setTimeout(() => closeList(combo), 180);
+      });
+    });
+
+    // Legacy select path (kept if any remain)
+    if (legacySelects.length) {
+      const companySel = form.querySelector('select#f-company');
+      const clientSel = form.querySelector('select#f-client');
+      const branchSel = form.querySelector('select#f-branch');
+      const softwareSel = form.querySelector('select#f-software');
+      const refreshDependent = () => {
+        const companyName = companySel ? companySel.value : '';
+        const clientName = clientSel ? clientSel.value : '';
+        const branchName = branchSel ? branchSel.value : '';
+        if (clientSel) {
+          const keep = clientName === SETUP_ADD_VALUE ? '' : clientName;
+          refillSetupSelect(clientSel, 'clients', keep, { companyName });
+        }
+        if (branchSel) {
+          const keepB = branchName === SETUP_ADD_VALUE ? '' : branchName;
+          const cln = clientSel ? clientSel.value : clientName;
+          refillSetupSelect(branchSel, 'branches', keepB, { clientName: cln === SETUP_ADD_VALUE ? '' : cln });
+        }
+      };
+      async function onMasterChange(sel, kind) {
+        if (!sel) return;
+        const prev = sel.getAttribute('data-prev') || '';
+        if (sel.value === SETUP_ADD_VALUE) {
+          const added = await promptAddSetupMaster(kind);
+          if (added) {
+            if (kind === 'companies') {
+              refillSetupSelect(companySel, 'companies', added);
+              refreshDependent();
+            } else if (kind === 'clients') {
+              const companyName = companySel ? companySel.value : '';
+              refillSetupSelect(clientSel, 'clients', added, { companyName });
+              refreshDependent();
+            } else if (kind === 'branches') {
+              const clientName = clientSel ? clientSel.value : '';
+              refillSetupSelect(branchSel, 'branches', added, { clientName });
+            } else if (kind === 'software') {
+              refillSetupSelect(softwareSel, 'software', added);
+            }
+            sel.setAttribute('data-prev', added);
+          } else {
+            sel.value = prev;
+          }
+          return;
+        }
+        sel.setAttribute('data-prev', sel.value);
+        if (kind === 'companies' || kind === 'clients') refreshDependent();
+      }
+      [companySel, clientSel, branchSel, softwareSel].forEach((sel) => {
+        if (!sel) return;
+        sel.setAttribute('data-prev', sel.value || '');
+      });
+      if (companySel) companySel.addEventListener('change', () => onMasterChange(companySel, 'companies'));
+      if (clientSel) clientSel.addEventListener('change', () => onMasterChange(clientSel, 'clients'));
+      if (branchSel) branchSel.addEventListener('change', () => onMasterChange(branchSel, 'branches'));
+      if (softwareSel) softwareSel.addEventListener('change', () => onMasterChange(softwareSel, 'software'));
+    }
+  }
+
+  function openSetup() {
+    if (!isAdminRole()) {
+      alert('Only Admin / Super Admin can manage Setup masters.');
+      return;
+    }
+    document.getElementById('setup-backdrop').hidden = false;
+    switchSetupTab('companies');
+    refreshSetupPanels();
+  }
+  function closeSetup() {
+    const el = document.getElementById('setup-backdrop');
+    if (el) el.hidden = true;
+  }
+  function switchSetupTab(tab) {
+    document.querySelectorAll('#setup-tabs button').forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-setup-tab') === tab);
+    });
+    ['companies', 'clients', 'branches', 'software'].forEach((t) => {
+      const panel = document.getElementById('setup-panel-' + t);
+      if (panel) panel.classList.toggle('active', t === tab);
+    });
+  }
+
+  function fillSetupLinkSelects() {
+    const companySel = document.getElementById('setup-client-company');
+    if (companySel) {
+      const cur = companySel.value;
+      companySel.innerHTML = '<option value="">— Company (optional) —</option>' +
+        setupMasters.companies.map((r) =>
+          '<option value="' + escapeHtml(r.id) + '"' + (r.id === cur ? ' selected' : '') + '>' + escapeHtml(r.name) + '</option>'
+        ).join('');
+    }
+    const clientSel = document.getElementById('setup-branch-client');
+    if (clientSel) {
+      const cur = clientSel.value;
+      clientSel.innerHTML = '<option value="">— Client (optional) —</option>' +
+        setupMasters.clients.map((r) =>
+          '<option value="' + escapeHtml(r.id) + '"' + (r.id === cur ? ' selected' : '') + '>' + escapeHtml(r.name) + '</option>'
+        ).join('');
+    }
+  }
+
+  function renderSetupList(kind) {
+    const listId =
+      kind === 'companies' ? 'setup-companies-list'
+        : kind === 'clients' ? 'setup-clients-list'
+          : kind === 'software' ? 'setup-software-list'
+            : 'setup-branches-list';
+    const list = document.getElementById(listId);
+    if (!list) return;
+    const rows = setupMasters[kind] || [];
+    if (!rows.length) {
+      list.innerHTML = '<li><span class="meta">No entries yet. Add one above.</span></li>';
+      return;
+    }
+    list.innerHTML = rows.map((r) => {
+      let meta = '';
+      if (kind === 'clients' && r.company_id) {
+        const cn = setupCompanyNameById(r.company_id);
+        if (cn) meta = '<div class="meta">' + escapeHtml(cn) + '</div>';
+      }
+      if (kind === 'branches' && r.client_id) {
+        const cln = setupClientNameById(r.client_id);
+        if (cln) meta = '<div class="meta">' + escapeHtml(cln) + '</div>';
+      }
+      return (
+        '<li>' +
+          '<div><div>' + escapeHtml(r.name) + '</div>' + meta + '</div>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-setup-del="' + escapeHtml(kind) + '" data-setup-id="' + escapeHtml(r.id) + '" data-setup-name="' + escapeHtml(r.name) + '">Delete</button>' +
+        '</li>'
+      );
+    }).join('');
+    list.querySelectorAll('[data-setup-del]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        deleteSetupMaster(btn.getAttribute('data-setup-del'), btn.getAttribute('data-setup-id'), btn.getAttribute('data-setup-name'));
+      });
+    });
+  }
+
+  async function refreshSetupPanels() {
+    await loadSetupMasters();
+    fillSetupLinkSelects();
+    renderSetupList('companies');
+    renderSetupList('clients');
+    renderSetupList('branches');
+    renderSetupList('software');
+  }
+
+  async function addSetupFromPanel(kind) {
+    if (!isAdminRole()) return;
+    try {
+      if (kind === 'companies') {
+        const input = document.getElementById('setup-company-name');
+        const name = (input?.value || '').trim();
+        if (!name) { alert('Enter a company name.'); return; }
+        await insertSetupMaster('companies', name);
+        if (input) input.value = '';
+      } else if (kind === 'clients') {
+        const input = document.getElementById('setup-client-name');
+        const name = (input?.value || '').trim();
+        if (!name) { alert('Enter a client name.'); return; }
+        const companyId = document.getElementById('setup-client-company')?.value || null;
+        await insertSetupMaster('clients', name, companyId ? { company_id: companyId } : {});
+        if (input) input.value = '';
+      } else if (kind === 'branches') {
+        const input = document.getElementById('setup-branch-name');
+        const name = (input?.value || '').trim();
+        if (!name) { alert('Enter a branch name.'); return; }
+        const clientId = document.getElementById('setup-branch-client')?.value || null;
+        await insertSetupMaster('branches', name, clientId ? { client_id: clientId } : {});
+        if (input) input.value = '';
+      } else if (kind === 'software') {
+        const input = document.getElementById('setup-software-name');
+        const name = (input?.value || '').trim();
+        if (!name) { alert('Enter a software name.'); return; }
+        await insertSetupMaster('software', name);
+        if (input) input.value = '';
+      }
+      await refreshSetupPanels();
+    } catch (err) {
+      alert('Could not add: ' + (err.message || 'unknown error'));
+    }
+  }
+
+  async function deleteSetupMaster(kind, id, name) {
+    if (!isAdminRole() || !id) return;
+    const label =
+      kind === 'companies' ? 'company'
+        : kind === 'clients' ? 'client'
+          : kind === 'software' ? 'software'
+            : 'branch';
+    const ok = await confirmAction({
+      title: 'Delete ' + label + '?',
+      message: 'Remove <strong>' + escapeHtml(name || '') + '</strong> from the master list? Existing implementations keep their saved text.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    const table =
+      kind === 'companies' ? 'setup_companies'
+        : kind === 'clients' ? 'setup_clients'
+          : kind === 'software' ? 'setup_software'
+            : 'setup_branches';
+    try {
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) throw error;
+      await refreshSetupPanels();
+    } catch (err) {
+      alert('Could not delete: ' + (err.message || 'unknown error'));
+    }
+  }
+
+
   // ── Users admin (super_admin) ──
   function openUsersAdmin() {
     if (!isSuperAdmin()) return;
@@ -4695,6 +5389,32 @@
   }
 
   document.getElementById('btn-delete-approvals').addEventListener('click', openDeleteApprovals);
+  document.getElementById('btn-setup')?.addEventListener('click', openSetup);
+  document.getElementById('setup-close')?.addEventListener('click', closeSetup);
+  document.getElementById('setup-refresh')?.addEventListener('click', refreshSetupPanels);
+  document.getElementById('setup-backdrop')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('setup-backdrop')) closeSetup();
+  });
+  document.querySelectorAll('#setup-tabs button').forEach((b) => {
+    b.addEventListener('click', () => switchSetupTab(b.getAttribute('data-setup-tab')));
+  });
+  document.getElementById('setup-company-add')?.addEventListener('click', () => addSetupFromPanel('companies'));
+  document.getElementById('setup-client-add')?.addEventListener('click', () => addSetupFromPanel('clients'));
+  document.getElementById('setup-branch-add')?.addEventListener('click', () => addSetupFromPanel('branches'));
+  document.getElementById('setup-software-add')?.addEventListener('click', () => addSetupFromPanel('software'));
+  document.getElementById('setup-company-name')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addSetupFromPanel('companies'); }
+  });
+  document.getElementById('setup-client-name')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addSetupFromPanel('clients'); }
+  });
+  document.getElementById('setup-branch-name')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addSetupFromPanel('branches'); }
+  });
+  document.getElementById('setup-software-name')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addSetupFromPanel('software'); }
+  });
+
   document.getElementById('btn-users')?.addEventListener('click', openUsersAdmin);
   document.getElementById('users-close')?.addEventListener('click', closeUsersAdmin);
   document.getElementById('users-refresh')?.addEventListener('click', loadUsersAdminList);
@@ -4719,11 +5439,12 @@
   document.getElementById('qa-checked-at')?.addEventListener('input', setQaCheckedAtMax);
 
   // ── CRUD: projects ──
-  function addProject() {
+  async function addProject() {
     if (!canManageStructure()) {
       alert('Your role can only fill the checklist (update item status). Ask an Admin to add implementations.');
       return;
     }
+    await loadSetupMasters();
     openModal({
       title: 'New implementation',
       fields: projectFields({ name: 'New implementation', description: '', status: 'active', company: '', clientName: '', branch: '', softwareName: '', targetDate: '' }),
@@ -4776,13 +5497,14 @@
     });
   }
 
-  function editProject(id) {
+  async function editProject(id) {
     const p = getProject(id);
     if (!p) return;
     if (!canManageStructure()) {
       alert('Your role can only fill the checklist (update item status).');
       return;
     }
+    await loadSetupMasters();
     openModal({
       title: 'Edit implementation',
       fields: projectFields(p),
@@ -4965,20 +5687,20 @@
       </div>
       <div class="form-group">
         <label for="f-company">Company</label>
-        <input id="f-company" name="company" maxlength="120" value="${escapeHtml(company)}" placeholder="e.g. Parent company" />
+        ${setupComboboxHtml('f-company', 'company', 'companies', company, 'Type to search company…')}
       </div>
       <div class="form-group">
         <label for="f-client">Client name</label>
-        <input id="f-client" name="clientName" maxlength="120" value="${escapeHtml(clientName)}" placeholder="e.g. Acme Corp" />
+        ${setupComboboxHtml('f-client', 'clientName', 'clients', clientName, 'Type to search client…')}
       </div>
       <div class="form-row">
         <div class="form-group">
           <label for="f-branch">Branch</label>
-          <input id="f-branch" name="branch" maxlength="120" value="${escapeHtml(branch)}" placeholder="e.g. Greenhills / feature/login" />
+          ${setupComboboxHtml('f-branch', 'branch', 'branches', branch, 'Type to search branch…')}
         </div>
         <div class="form-group">
           <label for="f-software">Software name</label>
-          <input id="f-software" name="softwareName" maxlength="120" value="${escapeHtml(softwareName)}" placeholder="e.g. Point of Sale" />
+          ${setupComboboxHtml('f-software', 'softwareName', 'software', softwareName, 'Type to search software…')}
         </div>
       </div>
       <div class="form-group">
@@ -6049,6 +6771,7 @@
       if (ok) closeModal();
     };
     backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+    wireSetupMasterSelects(form);
     setTimeout(() => {
       const first = form.querySelector('input, select, textarea');
       if (first) first.focus();
@@ -6064,6 +6787,10 @@
     if (e.key !== 'Escape') return;
     if (!document.getElementById('confirm-backdrop').hidden) {
       closeConfirm(false);
+      return;
+    }
+    if (!document.getElementById('setup-backdrop')?.hidden) {
+      closeSetup();
       return;
     }
     if (!document.getElementById('admin-backdrop').hidden) {
