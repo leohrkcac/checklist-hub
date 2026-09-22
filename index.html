@@ -1911,6 +1911,33 @@
       text-align: center;
     }
     #qa-modal .form-group { margin-bottom: 0.75rem; }
+
+    /* ── Success toast ── */
+    #app-toast {
+      position: fixed;
+      top: 1.1rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-120%);
+      z-index: 200;
+      max-width: min(92vw, 420px);
+      padding: 0.7rem 1.1rem;
+      border-radius: var(--radius);
+      background: var(--success-soft);
+      color: var(--success);
+      border: 1px solid rgba(61, 214, 140, 0.45);
+      box-shadow: var(--shadow);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    #app-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -2451,6 +2478,39 @@
     }
     el.className = 'auth-msg show ' + (kind || 'info');
     el.textContent = text;
+  }
+
+  let _toastHideTimer = null;
+  /** Visible success toast/banner (auto-hides ~3s). Lives near setAuthMsg; #app-toast in DOM. */
+  function showSuccessToast(message) {
+    const el = document.getElementById('app-toast');
+    if (!el) return;
+    const msg = String(message || '').trim() || 'Added successfully';
+    if (_toastHideTimer) {
+      clearTimeout(_toastHideTimer);
+      _toastHideTimer = null;
+    }
+    el.hidden = false;
+    el.textContent = msg;
+    el.classList.remove('show');
+    void el.offsetWidth; // reflow so rapid re-shows animate
+    el.classList.add('show');
+    _toastHideTimer = setTimeout(() => {
+      el.classList.remove('show');
+      _toastHideTimer = setTimeout(() => {
+        el.hidden = true;
+        el.textContent = '';
+        _toastHideTimer = null;
+      }, 280);
+    }, 3000);
+  }
+
+  function setupKindSuccessMsg(kind) {
+    if (kind === 'companies') return 'Company added successfully';
+    if (kind === 'clients') return 'Client added successfully';
+    if (kind === 'software') return 'Software added successfully';
+    if (kind === 'branches') return 'Branch added successfully';
+    return 'Added successfully';
   }
 
   function showAuthView(view) {
@@ -4887,6 +4947,7 @@
         if (clid) extra.client_id = clid;
       }
       const row = await insertSetupMaster(kind, trimmed, extra);
+      showSuccessToast(setupKindSuccessMsg(kind));
       return row ? row.name : trimmed;
     } catch (err) {
       alert('Could not add: ' + (err.message || 'unknown error'));
@@ -4988,6 +5049,7 @@
         const row = await insertSetupMaster(kind, trimmed, extra);
         if (input) input.value = row ? row.name : trimmed;
         closeList(combo);
+        showSuccessToast(setupKindSuccessMsg(kind));
       } catch (err) {
         alert('Could not add: ' + (err.message || 'unknown error'));
       }
@@ -5231,6 +5293,7 @@
         if (input) input.value = '';
       }
       await refreshSetupPanels();
+      showSuccessToast(setupKindSuccessMsg(kind));
     } catch (err) {
       alert('Could not add: ' + (err.message || 'unknown error'));
     }
@@ -5491,6 +5554,7 @@
             });
             render();
             showPane('main');
+            showSuccessToast('Implementation added successfully');
           } catch { /* status already set */ }
         })();
       },
@@ -6316,6 +6380,7 @@
               });
             });
             render();
+            showSuccessToast('Checklist item added successfully');
           } catch { /* status set */ }
         })();
       },
@@ -6365,6 +6430,7 @@
           });
         });
         render();
+        showSuccessToast('Checklist item added successfully');
         if (newId) editTask(newId);
       } catch { /* status set */ }
     })();
@@ -6614,6 +6680,7 @@
               });
             });
             render();
+            showSuccessToast('Remark added successfully');
           } catch (err) {
             alert('Could not save remark: ' + (err.message || 'unknown error'));
           }
@@ -6685,6 +6752,7 @@
             });
             sectionFilter = 'remarks';
             render();
+            showSuccessToast('Remark added successfully');
           } catch (err) {
             alert('Could not save remark: ' + (err.message || 'unknown error'));
           }
@@ -7904,5 +7972,7 @@
 })();
 </script>
 
+
+  <div id="app-toast" class="app-toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
