@@ -5036,6 +5036,10 @@
   }
 
   function downloadTaskTemplate() {
+    if (!canManageStructure()) {
+      alert('Your role cannot download the import template.');
+      return;
+    }
     downloadCsvFile(TASK_CSV_TEMPLATE, 'checklist-import-template.csv');
     alert(
       'Downloaded the CSV template (columns: title, notes, priority, due_date, status).\n\n' +
@@ -5505,11 +5509,43 @@
   }
 
   // ── CRUD: tasks ──
+  /** Prefix for the active section tab (used when adding from Hardware / Software / Troubleshooting). */
+  function sectionTitlePrefix(section) {
+    if (section === 'hardware') return '[Hardware] ';
+    if (section === 'software') return '[Software] ';
+    if (section === 'troubleshooting') return '[Troubleshooting] ';
+    return '';
+  }
+
+  /** If title lacks a matching section prefix, prepend one for the given sectionFilter value. */
+  function ensureSectionTitlePrefix(title, section) {
+    const t = String(title || '').trim();
+    if (!t || !section) return t;
+    if (section === 'hardware') {
+      if (t.startsWith('[Hardware]')) return t;
+      return '[Hardware] ' + t;
+    }
+    if (section === 'software') {
+      // Keep more specific prefixes like [Software · Front End]
+      if (t.startsWith('[Software')) return t;
+      return '[Software] ' + t;
+    }
+    if (section === 'troubleshooting') {
+      if (t.startsWith('[Troubleshooting]')) return t;
+      return '[Troubleshooting] ' + t;
+    }
+    return t;
+  }
+
   function addTask(projectId) {
     if (!canManageStructure()) {
       alert('Your role can only fill the checklist (update item status). Ask an Admin to add checklist items.');
       return;
     }
+    const activeSection = (sectionFilter === 'hardware' || sectionFilter === 'software' || sectionFilter === 'troubleshooting')
+      ? sectionFilter
+      : null;
+    const prefixHint = sectionTitlePrefix(activeSection);
     openModal({
       title: 'New checklist item',
       fields: taskFields({
@@ -5520,11 +5556,13 @@
         status: 'pending',
       }),
       onSubmit(data) {
-        const title = data.title.trim();
+        let title = data.title.trim();
         if (!title) {
           alert('Please enter a checklist item title, or Cancel to discard.');
           return false; // keep modal open if openModal supports it
         }
+        // Auto-prefix from current section tab when the user did not already include one
+        title = ensureSectionTitlePrefix(title, activeSection);
         const open = openTasksSorted();
         const maxOrder = open.reduce((m, t) => Math.max(m, t.lineupOrder ?? -1), -1);
         const draft = {
@@ -5552,7 +5590,7 @@
                 entityType: 'task',
                 entityId: mapped.id,
                 entityLabel: mapped.title,
-                details: { projectId, status: mapped.status, priority: mapped.priority },
+                details: { projectId, status: mapped.status, priority: mapped.priority, section: activeSection || null },
               });
             });
             render();
@@ -5563,7 +5601,9 @@
     setTimeout(() => {
       const input = document.getElementById('f-title');
       if (input) {
-        input.placeholder = 'Checklist item title';
+        input.placeholder = prefixHint
+          ? (prefixHint.trim() + ' item title (prefix added if omitted)')
+          : 'Checklist item title';
         input.focus();
       }
     }, 50);
@@ -6072,8 +6112,8 @@
 
   // ── Render ──
   let taskFilter = 'all';
-  /** Section tab: all | hardware | software | troubleshooting | remarks */
-  let sectionFilter = 'all';
+  /** Section tab: hardware | software | troubleshooting | remarks (fixed tabs; default Hardware) */
+  let sectionFilter = 'hardware';
 
   function taskSection(title) {
     const t = String(title || '');
@@ -6271,8 +6311,9 @@
     }
 
     const all = projectTasks(project.id);
+    const VALID_SECTIONS = ['hardware', 'software', 'troubleshooting', 'remarks'];
+    if (!VALID_SECTIONS.includes(sectionFilter)) sectionFilter = 'hardware';
     const sectionCounts = {
-      all: all.length,
       hardware: all.filter((t) => taskSection(t.title) === 'hardware').length,
       software: all.filter((t) => taskSection(t.title) === 'software').length,
       troubleshooting: all.filter((t) => taskSection(t.title) === 'troubleshooting').length,
@@ -6359,7 +6400,6 @@
       <div class="task-toolbar">
         <div class="filter-tabs-stack">
           <div class="filter-tabs section-tabs" role="tablist" aria-label="Filter by section">
-            <button type="button" role="tab" data-section-filter="all" class="${sectionFilter === 'all' ? 'active' : ''}" aria-selected="${sectionFilter === 'all'}">All sections <span class="tab-count">(${sectionCounts.all})</span></button>
             <button type="button" role="tab" data-section-filter="hardware" class="${sectionFilter === 'hardware' ? 'active' : ''}" aria-selected="${sectionFilter === 'hardware'}">Hardware <span class="tab-count">(${sectionCounts.hardware})</span></button>
             <button type="button" role="tab" data-section-filter="software" class="${sectionFilter === 'software' ? 'active' : ''}" aria-selected="${sectionFilter === 'software'}">Software <span class="tab-count">(${sectionCounts.software})</span></button>
             <button type="button" role="tab" data-section-filter="troubleshooting" class="${sectionFilter === 'troubleshooting' ? 'active' : ''}" aria-selected="${sectionFilter === 'troubleshooting'}">Troubleshooting <span class="tab-count">(${sectionCounts.troubleshooting})</span></button>
@@ -6379,7 +6419,9 @@
           <button type="button" class="btn btn-ghost" id="btn-download-template" title="Download a CSV import template">Download template</button>
           <button type="button" class="btn btn-ghost" id="btn-import-tasks" title="Import checklist items from CSV or Excel into this implementation">Import items</button>
           <input type="file" id="import-tasks-file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
-          <button type="button" class="btn btn-primary" id="btn-add-task">+ Add checklist item</button>
+          ${!showRemarks
+            ? '<button type="button" class="btn btn-primary" id="btn-add-task">+ Add checklist item</button>'
+            : '<span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Remarks are added when checking items off.</span>'}
           ` : '<span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Checklist fill mode — update item status</span>'}
         </div>
       </div>
@@ -6389,20 +6431,22 @@
         ${tasks.length === 0 ? `
           <li class="empty">
             <p>${(() => {
-              if (sectionTasks.length === 0 && sectionFilter !== 'all') {
-                const labels = { hardware: 'Hardware', software: 'Software', troubleshooting: 'Troubleshooting' };
+              const labels = { hardware: 'Hardware', software: 'Software', troubleshooting: 'Troubleshooting' };
+              if (sectionTasks.length === 0) {
                 return 'No ' + (labels[sectionFilter] || sectionFilter) + ' items';
               }
-              if (taskFilter === 'all') return 'No checklist items in this implementation yet';
+              if (taskFilter === 'all') return 'No checklist items in this section yet';
               if (taskFilter === 'hold') return 'No checklist items on hold';
               return 'No ' + taskFilter + ' items';
             })()}</p>
-            <p class="sub">${sectionTasks.length === 0 && sectionFilter !== 'all'
-              ? 'Try another section tab, or All sections.'
+            <p class="sub">${sectionTasks.length === 0
+              ? (canManageStructure()
+                ? 'Add a checklist item for this section — the title will be prefixed automatically if needed.'
+                : 'Try another section tab, or ask an Admin to add items for this section.')
               : (taskFilter === 'all'
                 ? (canManageStructure() ? 'Add a checklist item to start tracking implementation progress.' : 'Ask an Admin to add checklist items.')
                 : 'Try another filter.')}</p>
-            ${taskFilter === 'all' && sectionFilter === 'all' && canManageStructure() ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
+            ${(taskFilter === 'all' || sectionTasks.length === 0) && canManageStructure() ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
           </li>
         ` : tasks.map((t) => renderTaskCard(t)).join('')}
       </ul>`}
@@ -6427,7 +6471,7 @@
 
     main.querySelectorAll('[data-section-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        sectionFilter = btn.getAttribute('data-section-filter') || 'all';
+        sectionFilter = btn.getAttribute('data-section-filter') || 'hardware';
         render();
       });
     });
