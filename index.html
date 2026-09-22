@@ -1682,7 +1682,7 @@
         <span class="logo" aria-hidden="true">✓</span>
         <div>
           <h1>Checklist Hub</h1>
-          <p>Sign in to manage your checklists and projects</p>
+          <p>Sign in to manage your implementation checklists</p>
         </div>
       </div>
 
@@ -1816,23 +1816,23 @@
     </div>
 
     <!-- Sidebar: projects -->
-    <aside class="sidebar" id="sidebar" aria-label="Projects">
+    <aside class="sidebar" id="sidebar" aria-label="Implementations">
       <div class="overall-card" id="overall-progress-sidebar" hidden>
         <!-- legacy slot unused; top strip is primary -->
       </div>
 
       <div class="panel-title">
-        <span>Projects</span>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-add-project" title="Add project">
+        <span>Implementations</span>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-add-project" title="Add implementation">
           + New
         </button>
       </div>
 
-      <ul class="project-list" id="project-list" role="listbox" aria-label="Project list"></ul>
+      <ul class="project-list" id="project-list" role="listbox" aria-label="Implementation list"></ul>
     </aside>
 
     <!-- Main: selected project tasks -->
-    <main class="main" id="main" aria-label="Project tasks">
+    <main class="main" id="main" aria-label="Implementation checklist items">
       <!-- filled by JS -->
     </main>
 
@@ -1841,13 +1841,13 @@
       <div class="panel-title">
         <span>Priority lineup</span>
       </div>
-      <p class="lineup-hint">Open tasks sorted by priority, then due date. Drag to reorder your “what next” queue.</p>
+      <p class="lineup-hint">Open checklist items sorted by priority, then due date. Drag to reorder your “what next” queue.</p>
       <ul class="lineup-list" id="lineup-list"></ul>
     </aside>
 
     <nav class="mobile-nav" aria-label="Views">
-      <button type="button" data-pane="sidebar" id="nav-projects">Projects</button>
-      <button type="button" data-pane="main" class="active" id="nav-tasks">Tasks</button>
+      <button type="button" data-pane="sidebar" id="nav-projects">Implementations</button>
+      <button type="button" data-pane="main" class="active" id="nav-tasks">Items</button>
       <button type="button" data-pane="lineup" id="nav-lineup">Lineup</button>
     </nav>
   </div>
@@ -1922,7 +1922,7 @@
       <div class="admin-tabs" role="tablist">
         <button type="button" class="active" data-admin-tab="groups">Groups</button>
         <button type="button" data-admin-tab="members">Members</button>
-        <button type="button" data-admin-tab="projects">Project assignment</button>
+        <button type="button" data-admin-tab="projects">Implementation assignment</button>
       </div>
       <div id="admin-panel-groups" class="admin-section active">
         <div class="admin-row">
@@ -1946,7 +1946,7 @@
           <select id="admin-project-group"></select>
           <button type="button" class="btn btn-primary btn-sm" id="admin-project-save">Save</button>
         </div>
-        <p class="meta" style="color:var(--text-dim);font-size:0.75rem;margin-top:0.35rem">Assign a project to a department. Members only see projects for groups they belong to.</p>
+        <p class="meta" style="color:var(--text-dim);font-size:0.75rem;margin-top:0.35rem">Assign an implementation to a department. Members only see implementations for groups they belong to.</p>
         <ul class="admin-list" id="admin-projects-list"></ul>
       </div>
       <div class="modal-actions">
@@ -1971,7 +1971,7 @@
   <div class="modal-backdrop" id="qa-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="qa-title">
     <div class="modal modal-wide" id="qa-modal">
       <h3 id="qa-title">Check &amp; test</h3>
-      <p class="qa-hint">Retest after fixes until the task passes with no bugs.</p>
+      <p class="qa-hint">Retest after fixes until the checklist item passes with no bugs.</p>
       <form id="qa-form">
         <input type="hidden" id="qa-task-id" value="" />
         <div class="form-group">
@@ -2571,24 +2571,24 @@
     return {
       projects: [
         {
-          title: 'Website redesign',
-          description: 'Refresh the marketing site and improve mobile experience.',
+          title: 'Feature go-live — Payments',
+          description: 'Roll out new payment flow across staging then production.',
           status: 'active',
           client_name: 'Northwind Retail',
-          branch: 'feature/marketing-refresh',
+          branch: 'release/payments-v2',
           target_date: addDays(28),
         },
         {
-          title: 'Design system',
-          description: 'Shared components, tokens, and documentation.',
+          title: 'Site setup — Greenhills',
+          description: 'New branch site implementation checklist.',
           status: 'active',
-          client_name: 'Internal — Product',
+          client_name: 'Internal — Implementations',
           branch: 'main',
           target_date: addDays(60),
         },
         {
-          title: 'Admin & ops',
-          description: 'Recurring admin tasks.',
+          title: 'Platform hardening',
+          description: 'Security and ops checklist for the next release window.',
           status: 'on_hold',
           client_name: 'Ops team',
           branch: '',
@@ -2597,19 +2597,19 @@
       ],
       // tasks keyed by project title for linking after insert
       tasksByProject: {
-        'Website redesign': [
-          { title: 'Draft project brief', notes: 'Outline goals and success criteria.', priority: 'high', due_date: addDays(2), status: 'pending', lineup_order: 0 },
-          { title: 'Stakeholder kick-off', notes: '', priority: 'high', due_date: addDays(5), status: 'pending', lineup_order: 1 },
-          { title: 'Set up shared folder', notes: 'Invite the team.', priority: 'low', due_date: null, status: 'done', lineup_order: 0 },
+        'Feature go-live — Payments': [
+          { title: 'Confirm staging environment', notes: 'Smoke-test auth and checkout.', priority: 'high', due_date: addDays(2), status: 'pending', lineup_order: 0 },
+          { title: 'Run go-live checklist with stakeholders', notes: '', priority: 'high', due_date: addDays(5), status: 'pending', lineup_order: 1 },
+          { title: 'Document rollback steps', notes: 'Share with on-call.', priority: 'low', due_date: null, status: 'done', lineup_order: 0 },
         ],
-        'Design system': [
-          { title: 'Review design mock-ups', notes: 'Focus on mobile layout.', priority: 'medium', due_date: addDays(1), status: 'pending', lineup_order: 2 },
-          { title: 'Write accessibility checklist', notes: '', priority: 'medium', due_date: addDays(7), status: 'pending', lineup_order: 3 },
-          { title: 'Pick colour palette', notes: 'Dark theme preferred.', priority: 'low', due_date: null, status: 'done', lineup_order: 0 },
+        'Site setup — Greenhills': [
+          { title: 'Provision site credentials', notes: 'Store securely; never in the app.', priority: 'medium', due_date: addDays(1), status: 'pending', lineup_order: 2 },
+          { title: 'Configure menu / catalogue sync', notes: '', priority: 'medium', due_date: addDays(7), status: 'pending', lineup_order: 3 },
+          { title: 'Train store staff on checklist app', notes: 'Share GitHub Pages URL.', priority: 'low', due_date: null, status: 'done', lineup_order: 0 },
         ],
-        'Admin & ops': [
-          { title: 'File quarterly expenses', notes: '', priority: 'high', due_date: addDays(-1), status: 'pending', lineup_order: 4 },
-          { title: 'Renew domain', notes: 'Check auto-renew is on.', priority: 'low', due_date: addDays(14), status: 'pending', lineup_order: 5 },
+        'Platform hardening': [
+          { title: 'Review RLS policies', notes: '', priority: 'high', due_date: addDays(-1), status: 'pending', lineup_order: 4 },
+          { title: 'Rotate unused API keys', notes: 'Keep only anon key in the static app.', priority: 'low', due_date: addDays(14), status: 'pending', lineup_order: 5 },
         ],
       },
     };
@@ -2835,12 +2835,12 @@
     if (!t) return;
     if (t.status !== 'done') {
       const label = TASK_STATUS_LABELS[t.status] || t.status;
-      setSync('error', 'QA is only available when a task is Done (awaiting QA). Current status: ' + label + '.');
+      setSync('error', 'QA is only available when a checklist item is Done (awaiting QA). Current status: ' + label + '.');
       return;
     }
     qaModalTaskId = taskId;
     const backdrop = document.getElementById('qa-backdrop');
-    document.getElementById('qa-title').textContent = 'Check & test — ' + (t.title || 'Untitled task');
+    document.getElementById('qa-title').textContent = 'Check & test — ' + (t.title || 'Untitled checklist item');
     document.getElementById('qa-task-id').value = taskId;
     const testerDisplay = (myFullName || '').trim();
     document.getElementById('qa-tester').value = testerDisplay
@@ -2948,12 +2948,12 @@
         t.status = 'completed';
         t.lineupOrder = 0;
         await persistTaskStatusChange(t, prev, 'task.status');
-        setSync('ok', 'QA passed — task marked Completed.');
+        setSync('ok', 'QA passed — checklist item marked Completed.');
         closeQaModal();
       } else if (result === 'fail') {
         const ok = await confirmAction({
           title: 'Move back to Pending?',
-          message: 'This check failed. Move task <strong>“' + escapeHtml(t.title || 'Untitled') + '”</strong> back to Pending for fixes? (Cancel keeps it as Done awaiting retest.)',
+          message: 'This check failed. Move checklist item <strong>“' + escapeHtml(t.title || 'Untitled') + '”</strong> back to Pending for fixes? (Cancel keeps it as Done awaiting retest.)',
           confirmLabel: 'Set Pending',
           danger: false,
         });
@@ -3004,7 +3004,7 @@
   }
 
   async function addSampleData() {
-    if (!confirm('Insert sample projects and tasks into Supabase? Existing data is kept.')) return;
+    if (!confirm('Insert sample implementations and checklist items into Supabase? Existing data is kept.')) return;
     try {
       setSync('syncing', 'Adding samples…');
       const sample = samplePayload();
@@ -3213,17 +3213,17 @@
   const AUDIT_ACTION_TITLES = {
     'auth.signin': 'Signed in',
     'auth.signout': 'Signed out',
-    'project.create': 'Created project',
-    'project.update': 'Updated project',
-    'project.delete': 'Deleted project',
-    'project.group_change': 'Changed project group',
-    'task.create': 'Created task',
-    'task.update': 'Updated task',
-    'task.delete': 'Deleted task',
-    'task.status': 'Changed task status',
-    'task.hold': 'Put task on hold',
+    'project.create': 'Created implementation',
+    'project.update': 'Updated implementation',
+    'project.delete': 'Deleted implementation',
+    'project.group_change': 'Changed implementation group',
+    'task.create': 'Created checklist item',
+    'task.update': 'Updated checklist item',
+    'task.delete': 'Deleted checklist item',
+    'task.status': 'Changed checklist item status',
+    'task.hold': 'Put checklist item on hold',
     'task.qa_check': 'Logged QA check',
-    'tasks.import': 'Imported tasks',
+    'tasks.import': 'Imported checklist items',
     'group.create': 'Created group',
     'group.rename': 'Renamed group',
     'group.delete': 'Deleted group',
@@ -3850,12 +3850,12 @@
       '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) +
       (p.groupId ? ' (' + escapeHtml(groupName(p.groupId) || 'group') + ')' : ' (unassigned)') +
       '</option>'
-    ).join('') || '<option value="">No projects</option>';
+    ).join('') || '<option value="">No implementations</option>';
     const pl = document.getElementById('admin-projects-list');
     pl.innerHTML = state.projects.map((p) =>
       '<li><div><strong>' + escapeHtml(p.name) + '</strong><div class="meta">' +
       escapeHtml(groupName(p.groupId) || 'Unassigned') + '</div></div></li>'
-    ).join('') || '<li><span class="meta">No projects</span></li>';
+    ).join('') || '<li><span class="meta">No implementations</span></li>';
 
     // Datalist of known emails for convenience
     let dl = document.getElementById('admin-email-datalist');
@@ -4042,7 +4042,7 @@
     const projectId = document.getElementById('admin-project-pick').value;
     const groupId = document.getElementById('admin-project-group').value || null;
     const p = getProject(projectId);
-    if (!p) { alert('Select a project.'); return; }
+    if (!p) { alert('Select an implementation.'); return; }
     const prevGroupId = p.groupId || null;
     if ((prevGroupId || null) === (groupId || null)) return;
     try {
@@ -4064,7 +4064,7 @@
       refreshAdminPanels();
       render();
     } catch (err) {
-      alert('Could not assign project: ' + (err.message || 'unknown error'));
+      alert('Could not assign implementation: ' + (err.message || 'unknown error'));
     }
   }
 
@@ -4102,11 +4102,11 @@
   // ── CRUD: projects ──
   function addProject() {
     openModal({
-      title: 'New project',
-      fields: projectFields({ name: 'New project', description: '', status: 'active', clientName: '', branch: '', targetDate: '' }),
+      title: 'New implementation',
+      fields: projectFields({ name: 'New implementation', description: '', status: 'active', clientName: '', branch: '', targetDate: '' }),
       onSubmit(data) {
         const draft = {
-          name: data.name.trim() || 'Untitled project',
+          name: data.name.trim() || 'Untitled implementation',
           description: data.description.trim(),
           status: data.status,
           clientName: (data.clientName || '').trim(),
@@ -4146,11 +4146,11 @@
     const p = getProject(id);
     if (!p) return;
     openModal({
-      title: 'Edit project',
+      title: 'Edit implementation',
       fields: projectFields(p),
       onSubmit(data) {
         const prev = { ...p };
-        p.name = data.name.trim() || 'Untitled project';
+        p.name = data.name.trim() || 'Untitled implementation';
         p.description = data.description.trim();
         p.status = data.status;
         p.clientName = (data.clientName || '').trim();
@@ -4205,12 +4205,12 @@
   function deleteProject(id) {
     const p = getProject(id);
     if (!p) return;
-    const label = p.name || 'Untitled project';
+    const label = p.name || 'Untitled implementation';
     const taskCount = state.tasks.filter((t) => t.projectId === id).length;
     // Within assigned groups, members may delete directly (RLS). Supers may delete anywhere.
     confirmAction({
-      title: 'Delete project',
-      message: 'Delete project <strong>“' + escapeHtml(label) + '”</strong> and all its tasks? This cannot be undone.',
+      title: 'Delete implementation',
+      message: 'Delete implementation <strong>“' + escapeHtml(label) + '”</strong> and all its checklist items? This cannot be undone.',
       confirmLabel: 'Delete',
       danger: true,
     }).then((ok) => {
@@ -4259,7 +4259,7 @@
     const targetDate = p.targetDate ?? '';
     return `
       <div class="form-group">
-        <label for="f-name">Project title</label>
+        <label for="f-name">Implementation title</label>
         <input id="f-name" name="name" required maxlength="120" value="${escapeHtml(p.name)}" />
       </div>
       <div class="form-group">
@@ -4296,13 +4296,13 @@
   }
 
 
-  // ── Task import / template (CSV + Excel checklist) ──
+  // ── Checklist item import / template (CSV + Excel) ──
   const TASK_CSV_HEADERS = ['title', 'notes', 'priority', 'due_date', 'status'];
   const TASK_CSV_TEMPLATE = [
     TASK_CSV_HEADERS.join(','),
-    '"Review draft proposal","Check client comments in the brief",high,2026-09-25,pending',
-    '"Update colour palette","Sample — replace with your own notes",medium,,pending',
-    '"Archive old files","Sample row — status done",low,,done',
+    '"Confirm staging cutover","Check client sign-off in the brief",high,2026-09-25,pending',
+    '"Enable feature flag","Sample — replace with your own notes",medium,,pending',
+    '"Verify production smoke tests","Sample row — status done",low,,done',
     '"Pause vendor follow-up","Sample row — status hold / on hold",low,,hold',
   ].join('\n') + '\n';
 
@@ -4321,12 +4321,10 @@
   }
 
   function downloadTaskTemplate() {
-    downloadCsvFile(TASK_CSV_TEMPLATE, 'task-import-template.csv');
+    downloadCsvFile(TASK_CSV_TEMPLATE, 'checklist-import-template.csv');
     alert(
-      'Downloaded the simple CSV template (columns: title, notes, priority, due_date, status).\n\n' +
-      'You can also import a Tuan-Tuan style Excel checklist (.xlsx) directly via Import tasks — ' +
-      'sheets named “Additional Requests” and “Done by EPOS” are recognised automatically. ' +
-      'The Summary & Sign-off sheet is ignored.'
+      'Downloaded the CSV template (columns: title, notes, priority, due_date, status).\n\n' +
+      'Use Import items to load a filled CSV or a compatible Excel checklist into the selected implementation.'
     );
   }
 
@@ -4476,7 +4474,7 @@
         error:
           'CSV is missing required column(s): ' +
           missing.join(', ') +
-          '. Download the template for the expected format, or use a Tuan-Tuan style Excel checklist.',
+          '. Download the template for the expected format.',
       };
     }
 
@@ -4678,10 +4676,9 @@
     if (result.error) {
       return {
         error:
-          'Unrecognised Excel format. Expected a Tuan-Tuan checklist ' +
-          '(sheets “Additional Requests” / “Done by EPOS”) or a sheet with columns ' +
+          'Unrecognised Excel format. Expected a sheet with columns ' +
           TASK_CSV_HEADERS.join(', ') +
-          '.',
+          ', or a multi-sheet checklist workbook the importer recognises.',
       };
     }
     return result;
@@ -4693,12 +4690,12 @@
    */
   async function importTasksFromFile(file, projectId) {
     if (!projectId) {
-      alert('Select a project before importing tasks.');
+      alert('Select an implementation before importing checklist items.');
       return;
     }
     const project = getProject(projectId);
     if (!project) {
-      alert('Selected project not found.');
+      alert('Selected implementation not found.');
       return;
     }
 
@@ -4722,7 +4719,7 @@
 
     const { drafts, skipped, errorMsgs } = parsed;
     if (!drafts.length) {
-      const parts = ['No tasks imported.'];
+      const parts = ['No checklist items imported.'];
       if (skipped) parts.push('Skipped ' + skipped + ' row(s) with empty title.');
       if (errorMsgs.length) parts.push(errorMsgs.length + ' row(s) had errors:\n' + errorMsgs.slice(0, 8).join('\n'));
       alert(parts.join('\n'));
@@ -4768,12 +4765,12 @@
       });
       render();
       const parts = [
-        'Imported ' + drafts.length + ' task(s) into the selected project.',
+        'Imported ' + drafts.length + ' checklist item(s) into the selected implementation.',
       ];
       if (parsed.format === 'tuan-tuan') {
-        parts.push('Recognised Tuan-Tuan Greenhills POS checklist format.');
+        parts.push('Recognised multi-sheet checklist workbook format.');
         if (parsed.clientWasSet) {
-          parts.push('Client set to “' + TUAN_TUAN_CLIENT + '” (was empty).');
+          parts.push('Client set from the workbook (was empty).');
         }
       }
       if (skipped) parts.push('Skipped ' + skipped + ' row(s) with empty title.');
@@ -4791,7 +4788,7 @@
   // ── CRUD: tasks ──
   function addTask(projectId) {
     openModal({
-      title: 'New task',
+      title: 'New checklist item',
       fields: taskFields({
         title: '',
         notes: '',
@@ -4802,7 +4799,7 @@
       onSubmit(data) {
         const title = data.title.trim();
         if (!title) {
-          alert('Please enter a task title, or Cancel to discard.');
+          alert('Please enter a checklist item title, or Cancel to discard.');
           return false; // keep modal open if openModal supports it
         }
         const open = openTasksSorted();
@@ -4843,7 +4840,7 @@
     setTimeout(() => {
       const input = document.getElementById('f-title');
       if (input) {
-        input.placeholder = 'Task title';
+        input.placeholder = 'Checklist item title';
         input.focus();
       }
     }, 50);
@@ -4854,7 +4851,7 @@
     const maxOrder = open.reduce((m, t) => Math.max(m, t.lineupOrder ?? -1), -1);
     const draft = {
       projectId,
-      title: 'New task',
+      title: 'New checklist item',
       notes: '',
       priority: 'medium',
       dueDate: '',
@@ -4892,12 +4889,12 @@
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
     openModal({
-      title: 'Edit task',
+      title: 'Edit checklist item',
       fields: taskFields(t),
       onSubmit(data) {
         const prev = { ...t };
         const wasPending = t.status === 'pending';
-        t.title = data.title.trim() || 'Untitled task';
+        t.title = data.title.trim() || 'Untitled checklist item';
         t.notes = data.notes.trim();
         t.priority = data.priority;
         t.dueDate = data.dueDate || '';
@@ -4946,10 +4943,10 @@
   function deleteTask(id) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
-    const label = t.title || 'Untitled task';
+    const label = t.title || 'Untitled checklist item';
     confirmAction({
-      title: 'Delete task',
-      message: 'Delete task <strong>“' + escapeHtml(label) + '”</strong>? This cannot be undone.',
+      title: 'Delete checklist item',
+      message: 'Delete checklist item <strong>“' + escapeHtml(label) + '”</strong>? This cannot be undone.',
       confirmLabel: 'Delete',
       danger: true,
     }).then((ok) => {
@@ -5041,7 +5038,7 @@
   function taskFields(t) {
     return `
       <div class="form-group">
-        <label for="f-title">Title</label>
+        <label for="f-title">Checklist item title</label>
         <input id="f-title" name="title" required maxlength="200" value="${escapeHtml(t.title)}" />
       </div>
       <div class="form-group">
@@ -5069,7 +5066,7 @@
           <option value="hold" ${t.status === 'hold' ? 'selected' : ''}>On hold</option>
           <option value="done" ${t.status === 'done' || t.status === 'completed' ? 'selected' : ''}>Done (awaiting QA)</option>
         </select>
-        ${t.status === 'completed' ? '<p class="field-hint">This task is <strong>Completed</strong> (QA passed). Saving with Done moves it back to awaiting QA. Completed is only set by a passing QA check.</p>' : '<p class="field-hint">Completed is set only when QA passes — not from this menu.</p>'}
+        ${t.status === 'completed' ? '<p class="field-hint">This checklist item is <strong>Completed</strong> (QA passed). Saving with Done moves it back to awaiting QA. Completed is only set by a passing QA check.</p>' : '<p class="field-hint">Completed is set only when QA passes — not from this menu.</p>'}
       </div>
     `;
   }
@@ -5274,9 +5271,9 @@
     const ps = projectStatusStats(state.projects);
     const ts = taskStats(state.tasks);
     el.innerHTML = `
-      <section class="dash-panel" aria-label="Projects overview">
-        <h3 class="dash-panel-title">Projects</h3>
-        <div class="dash-stats-row" role="group" aria-label="Project counts and percentages">
+      <section class="dash-panel" aria-label="Implementations overview">
+        <h3 class="dash-panel-title">Implementations</h3>
+        <div class="dash-stats-row" role="group" aria-label="Implementation counts and percentages">
           <div class="dash-pills">
             <div class="pct-chip total"><strong>${ps.total}</strong> Total</div>
             <div class="pct-chip done"><strong>${ps.done}</strong> Done</div>
@@ -5288,13 +5285,13 @@
             <div class="pct-chip pending"><strong>${ps.pctPending}%</strong> Pending</div>
           </div>
         </div>
-        <div class="progress-bar dash-bar-slim" role="progressbar" aria-valuenow="${ps.pctDone}" aria-valuemin="0" aria-valuemax="100" aria-label="Projects percent complete">
+        <div class="progress-bar dash-bar-slim" role="progressbar" aria-valuenow="${ps.pctDone}" aria-valuemin="0" aria-valuemax="100" aria-label="Implementations percent complete">
           <span style="width:${ps.pctDone}%"></span>
         </div>
       </section>
-      <section class="dash-panel" aria-label="Tasks overview">
-        <h3 class="dash-panel-title">Tasks</h3>
-        <div class="dash-stats-row" role="group" aria-label="Task counts and percentages">
+      <section class="dash-panel" aria-label="Checklist items overview">
+        <h3 class="dash-panel-title">Items</h3>
+        <div class="dash-stats-row" role="group" aria-label="Checklist item counts and percentages">
           <div class="dash-pills">
             <div class="pct-chip total"><strong>${ts.allCount}</strong> Total</div>
             <div class="pct-chip done"><strong>${ts.doneOnly}</strong> Done</div>
@@ -5308,7 +5305,7 @@
             <div class="pct-chip pending"><strong>${ts.pctPending}%</strong> Pending</div>
           </div>
         </div>
-        <div class="progress-bar dash-bar-slim" role="progressbar" aria-valuenow="${ts.pctDone}" aria-valuemin="0" aria-valuemax="100" aria-label="Tasks percent complete">
+        <div class="progress-bar dash-bar-slim" role="progressbar" aria-valuenow="${ts.pctDone}" aria-valuemin="0" aria-valuemax="100" aria-label="Checklist items percent complete">
           <span style="width:${ts.pctDone}%"></span>
         </div>
       </section>
@@ -5318,7 +5315,7 @@
   function renderProjects() {
     const list = document.getElementById('project-list');
     if (state.projects.length === 0) {
-      list.innerHTML = `<li class="empty-sm">No projects yet. Tap “+ New” to start.</li>`;
+      list.innerHTML = `<li class="empty-sm">No implementations yet. Tap “+ New” to create one, then add checklist items.</li>`;
       return;
     }
     list.innerHTML = state.projects.map((p) => {
@@ -5344,8 +5341,8 @@
             <span style="width:${stats.pctDone}%"></span>
           </div>
           <div class="project-actions">
-            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="Rename / edit" aria-label="Edit project">✎</button>
-            <button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="Delete project" aria-label="Delete project">✕</button>
+            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="Rename / edit" aria-label="Edit implementation">✎</button>
+            <button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="Delete implementation" aria-label="Delete implementation">✕</button>
           </div>
         </li>
       `;
@@ -5359,9 +5356,9 @@
     if (!project) {
       main.innerHTML = `
         <div class="empty">
-          <p>No project selected</p>
-          <p class="sub">Create a project from the sidebar to get started.</p>
-          <button type="button" class="btn btn-primary" id="empty-add-project">+ New project</button>
+          <p>No implementation selected</p>
+          <p class="sub">Create an implementation from the sidebar, then add checklist items.</p>
+          <button type="button" class="btn btn-primary" id="empty-add-project">+ New implementation</button>
         </div>
       `;
       document.getElementById('empty-add-project')?.addEventListener('click', addProject);
@@ -5428,7 +5425,7 @@
       </div>
 
       <div class="task-toolbar">
-        <div class="filter-tabs" role="tablist" aria-label="Filter tasks">
+        <div class="filter-tabs" role="tablist" aria-label="Filter checklist items">
           <button type="button" role="tab" data-filter="all" class="${taskFilter === 'all' ? 'active' : ''}" aria-selected="${taskFilter === 'all'}">All (${all.length})</button>
           <button type="button" role="tab" data-filter="pending" class="${taskFilter === 'pending' ? 'active' : ''}" aria-selected="${taskFilter === 'pending'}">Pending (${stats.pending})</button>
           <button type="button" role="tab" data-filter="hold" class="${taskFilter === 'hold' ? 'active' : ''}" aria-selected="${taskFilter === 'hold'}">Hold (${stats.hold})</button>
@@ -5436,25 +5433,25 @@
           <button type="button" role="tab" data-filter="completed" class="${taskFilter === 'completed' ? 'active' : ''}" aria-selected="${taskFilter === 'completed'}">Completed (${stats.completed})</button>
         </div>
         <div class="task-toolbar-actions">
-          <button type="button" class="btn btn-ghost" id="btn-download-template" title="Download a CSV template, or note that Tuan-Tuan Excel checklists can be imported directly">Download template</button>
-          <button type="button" class="btn btn-ghost" id="btn-import-tasks" title="Import tasks from CSV or a Tuan-Tuan Excel checklist into this project">Import tasks</button>
+          <button type="button" class="btn btn-ghost" id="btn-download-template" title="Download a CSV import template">Download template</button>
+          <button type="button" class="btn btn-ghost" id="btn-import-tasks" title="Import checklist items from CSV or Excel into this implementation">Import items</button>
           <input type="file" id="import-tasks-file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
-          <button type="button" class="btn btn-primary" id="btn-add-task">+ Add task</button>
+          <button type="button" class="btn btn-primary" id="btn-add-task">+ Add checklist item</button>
         </div>
       </div>
 
       <ul class="task-list" id="task-list">
         ${tasks.length === 0 ? `
           <li class="empty">
-            <p>${taskFilter === 'all' ? 'No tasks in this project yet' : (taskFilter === 'hold' ? 'No tasks on hold' : `No ${taskFilter} tasks`)}</p>
-            <p class="sub">${taskFilter === 'all' ? 'Add a task to start tracking progress.' : 'Try another filter, or add a new task.'}</p>
-            ${taskFilter === 'all' ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add task</button>' : ''}
+            <p>${taskFilter === 'all' ? 'No checklist items in this implementation yet' : (taskFilter === 'hold' ? 'No checklist items on hold' : `No ${taskFilter} items`)}</p>
+            <p class="sub">${taskFilter === 'all' ? 'Add a checklist item to start tracking implementation progress.' : 'Try another filter, or add a new checklist item.'}</p>
+            ${taskFilter === 'all' ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
           </li>
         ` : tasks.map((t) => renderTaskCard(t)).join('')}
       </ul>
     `;
 
-    renderProgressCard(document.getElementById('project-progress'), stats, 'This project');
+    renderProgressCard(document.getElementById('project-progress'), stats, 'This implementation');
 
     document.getElementById('btn-add-task')?.addEventListener('click', () => addTask(project.id));
     document.getElementById('empty-add-task')?.addEventListener('click', () => addTask(project.id));
@@ -5524,8 +5521,8 @@
             ? `<button type="button" class="btn-icon" data-action="qa-task" data-id="${t.id}" title="Check &amp; test (QA)" aria-label="Check and test">📋</button>`
             : `<button type="button" class="btn-icon qa-btn-disabled" disabled title="QA only when status is Done (awaiting QA)" aria-label="QA unavailable">📋</button>`}
           ${holdBtn}
-          <button type="button" class="btn-icon" data-action="edit-task" data-id="${t.id}" title="Edit" aria-label="Edit task">✎</button>
-          <button type="button" class="btn-icon danger" data-action="delete-task" data-id="${t.id}" title="Delete task" aria-label="Delete task">✕</button>
+          <button type="button" class="btn-icon" data-action="edit-task" data-id="${t.id}" title="Edit" aria-label="Edit checklist item">✎</button>
+          <button type="button" class="btn-icon danger" data-action="delete-task" data-id="${t.id}" title="Delete checklist item" aria-label="Delete checklist item">✕</button>
         </div>
       </li>
     `;
@@ -5536,7 +5533,7 @@
     const items = openTasksSorted();
 
     if (items.length === 0) {
-      list.innerHTML = `<li class="empty-sm">No open tasks. Mark something as pending, or add a new task.</li>`;
+      list.innerHTML = `<li class="empty-sm">No open checklist items. Mark something as pending, or add a new item.</li>`;
       return;
     }
 
@@ -5553,7 +5550,7 @@
           <span class="drag-handle" aria-hidden="true" title="Drag to reorder">⠿</span>
           <div>
             <div class="title">${escapeHtml(t.title)}</div>
-            <div class="proj">${escapeHtml(proj?.name || 'Unknown project')}</div>
+            <div class="proj">${escapeHtml(proj?.name || 'Unknown implementation')}</div>
             <div class="meta-row">
               <span class="priority-badge ${t.priority}">${t.priority}</span>
               ${due}
