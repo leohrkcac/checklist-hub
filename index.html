@@ -1415,7 +1415,6 @@
       font-size: 0.8rem;
       color: var(--text-muted);
     }
-    .header-user .role-badge { display: none !important; }
     .header-user .user-email {
       max-width: 180px;
       overflow: hidden;
@@ -1446,13 +1445,51 @@
       background: var(--bg-input);
       white-space: nowrap;
     }
-    .role-badge.super {
+    .role-badge.super_admin, .role-badge.super {
       color: #f0c674;
       border-color: rgba(240, 198, 116, 0.45);
       background: rgba(240, 198, 116, 0.12);
     }
-    .role-badge.member {
+    .role-badge.admin {
+      color: #7dd3a7;
+      border-color: rgba(125, 211, 167, 0.45);
+      background: rgba(125, 211, 167, 0.12);
+    }
+    .role-badge.user, .role-badge.member {
       color: var(--text-dim);
+    }
+    .users-list .users-actions {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .users-list select {
+      padding: 0.3rem 0.45rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+    }
+    .users-list .active-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .inactive-account-msg {
+      max-width: 28rem;
+      margin: 1.5rem auto;
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius);
+      border: 1px solid rgba(232, 109, 109, 0.45);
+      background: rgba(232, 109, 109, 0.1);
+      color: #f0a0a0;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      text-align: center;
     }
 
     .group-chip {
@@ -1801,11 +1838,14 @@
         <button type="button" class="btn btn-ghost btn-sm" id="btn-admin" title="Manage groups and departments" hidden>
           Groups
         </button>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-users" title="Manage user accounts" hidden>
+          Users
+        </button>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-delete-approvals" title="Review pending delete requests" hidden>
           Pending Approval
         </button>
         <div class="header-user" id="header-user" hidden>
-          <span class="role-badge member" id="user-role-badge" title="Your role" hidden>Member</span>
+          <span class="role-badge user" id="user-role-badge" title="Your role">User</span>
           <button type="button" class="btn btn-ghost btn-sm" id="btn-signout" title="Sign out">Sign out</button>
         </div>
       </div>
@@ -1946,7 +1986,7 @@
           <select id="admin-project-group"></select>
           <button type="button" class="btn btn-primary btn-sm" id="admin-project-save">Save</button>
         </div>
-        <p class="meta" style="color:var(--text-dim);font-size:0.75rem;margin-top:0.35rem">Assign an implementation to a department. Members only see implementations for groups they belong to.</p>
+        <p class="meta" style="color:var(--text-dim);font-size:0.75rem;margin-top:0.35rem">Assign an implementation to a department. Users and Admins only see implementations for groups they belong to.</p>
         <ul class="admin-list" id="admin-projects-list"></ul>
       </div>
       <div class="modal-actions">
@@ -1955,7 +1995,7 @@
     </div>
   </div>
 
-  <!-- Pending Approval (super users) -->
+  <!-- Pending Approval (super_admin) -->
   <div class="modal-backdrop" id="approvals-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="approvals-title">
     <div class="modal modal-wide" id="approvals-modal">
       <h3 id="approvals-title">Pending Approval</h3>
@@ -1963,6 +2003,19 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="approvals-refresh">Refresh</button>
         <button type="button" class="btn btn-primary" id="approvals-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users (super_admin) -->
+  <div class="modal-backdrop" id="users-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="users-title">
+    <div class="modal modal-wide" id="users-modal">
+      <h3 id="users-title">Users</h3>
+      <p class="meta" style="color:var(--text-dim);font-size:0.75rem;margin:0 0 0.75rem">Super Admin only — set role (Admin / User) and activate or deactivate accounts.</p>
+      <ul class="admin-list users-list" id="users-list"></ul>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="users-refresh">Refresh</button>
+        <button type="button" class="btn btn-primary" id="users-close">Close</button>
       </div>
     </div>
   </div>
@@ -2031,21 +2084,57 @@
   let myFullName = '';
   let appBooted = false;
   let authListenerReady = false;
-  let userRole = 'member'; // 'super' | 'member'
+  let userRole = 'user'; // 'super_admin' | 'admin' | 'user'
+  let profileIsActive = true;
   /** @type {{ project: Set<string>, task: Set<string> }} */
   let pendingDeleteIds = { project: new Set(), task: new Set() };
   /** @type {{ id: string, name: string, description: string }[]} */
   let groups = [];
   /** @type {{ groupId: string, userId: string, email?: string }[]} */
   let groupMembers = [];
-  /** @type {{ user_id: string, email: string, role: string }[]} */
+  /** @type {{ user_id: string, email: string, role: string, is_active?: boolean, full_name?: string }[]} */
   let knownProfiles = [];
   /** @type {{ id: string, taskId: string, projectId: string|null, testerId: string|null, testerEmail: string, checkedAt: string, result: string, notes: string, attemptNo: number|null, createdAt: string }[]} */
   let taskQaChecks = [];
   let qaModalTaskId = null;
 
+  /** Map legacy UI/DB roles → canonical v2 roles. */
+  function normalizeRole(role) {
+    const r = String(role || '').toLowerCase().trim();
+    if (r === 'super' || r === 'super_admin') return 'super_admin';
+    if (r === 'admin') return 'admin';
+    // member (legacy) and user
+    return 'user';
+  }
+
+  function isSuperAdmin() {
+    return userRole === 'super_admin';
+  }
+  /** @deprecated alias — prefer isSuperAdmin() */
   function isSuperUser() {
-    return userRole === 'super';
+    return isSuperAdmin();
+  }
+  function isAdminRole() {
+    return userRole === 'admin' || userRole === 'super_admin';
+  }
+  /** Add / edit implementations & checklist item structure (not status-only). */
+  function canManageStructure() {
+    return isAdminRole();
+  }
+  function canApproveDeletes() {
+    return isSuperAdmin();
+  }
+  function canDirectDelete() {
+    return isSuperAdmin();
+  }
+  function canRequestDelete() {
+    return isAdminRole();
+  }
+  function roleBadgeLabel(role) {
+    const r = normalizeRole(role);
+    if (r === 'super_admin') return 'Super Admin';
+    if (r === 'admin') return 'Admin';
+    return 'User';
   }
 
   function currentUserId() {
@@ -2679,7 +2768,7 @@
     }
     if (isSuperUser()) {
       try {
-        const pRes = await supabase.from('profiles').select('user_id, email, role, full_name').order('email', { ascending: true });
+        const pRes = await supabase.from('profiles').select('user_id, email, role, full_name, is_active').order('email', { ascending: true });
         if (!pRes.error) knownProfiles = pRes.data || [];
         // Enrich member emails from profiles
         const byId = {};
@@ -3453,48 +3542,90 @@
     const badge = document.getElementById('user-role-badge');
     const approvalsBtn = document.getElementById('btn-delete-approvals');
     const adminBtn = document.getElementById('btn-admin');
+    const usersBtn = document.getElementById('btn-users');
+    const addProjectBtn = document.getElementById('btn-add-project');
     if (badge) {
-      const superUser = isSuperUser();
-      badge.textContent = superUser ? 'Super' : 'Member';
-      badge.className = 'role-badge ' + (superUser ? 'super' : 'member');
-      badge.title = superUser
-        ? 'Super user — full access, manage groups, approve deletes'
-        : 'Member — full CRUD inside your assigned groups/departments';
-      badge.hidden = true; // role chip hidden in header UI
+      const label = roleBadgeLabel(userRole);
+      badge.textContent = label;
+      badge.className = 'role-badge ' + normalizeRole(userRole);
+      badge.title =
+        userRole === 'super_admin'
+          ? 'Super Admin — manage groups/users, approve deletes, full structure access'
+          : (userRole === 'admin'
+            ? 'Admin — add/edit implementations & items; deletes need Super Admin approval'
+            : 'User — fill checklist (update item status) only');
+      badge.hidden = false;
     }
     if (approvalsBtn) {
-      approvalsBtn.hidden = !isSuperUser();
+      approvalsBtn.hidden = !canApproveDeletes();
       updatePendingApprovalsButton();
     }
-    if (adminBtn) adminBtn.hidden = !isSuperUser();
+    if (adminBtn) adminBtn.hidden = !isSuperAdmin();
+    if (usersBtn) usersBtn.hidden = !isSuperAdmin();
+    if (addProjectBtn) {
+      addProjectBtn.hidden = !canManageStructure();
+      addProjectBtn.disabled = !canManageStructure();
+    }
   }
 
   async function ensureProfile() {
-    userRole = 'member';
+    userRole = 'user';
+    profileIsActive = true;
     myFullName = '';
     try {
       if (!supabase || !session?.user) return;
       const { data, error } = await supabase.rpc('ensure_my_profile');
       if (error) throw error;
       let row = Array.isArray(data) ? data[0] : data;
-      userRole = (row && row.role === 'super') ? 'super' : 'member';
+      userRole = normalizeRole(row && row.role);
+      if (row && row.is_active === false) profileIsActive = false;
 
       // Soft-load profile details (columns may be missing until SQL is run)
       try {
         const uid = currentUserId();
         const sel = await supabase
           .from('profiles')
-          .select('full_name, gender, birthday, email, role')
+          .select('full_name, gender, birthday, email, role, is_active')
           .eq('user_id', uid)
           .maybeSingle();
         if (!sel.error && sel.data) {
           row = { ...row, ...sel.data };
-          if (sel.data.role === 'super') userRole = 'super';
+          userRole = normalizeRole(sel.data.role);
+          if (sel.data.is_active === false) profileIsActive = false;
+          else if (sel.data.is_active === true) profileIsActive = true;
         } else if (sel.error) {
           console.warn('Profile detail columns may be missing:', sel.error.message);
         }
       } catch (e2) {
         console.warn('Profile details fetch soft-failed:', e2);
+      }
+
+      // Inactive accounts: treat as signed-out / blocked
+      if (profileIsActive === false) {
+        updateHeaderFullName();
+        updateRoleBadge();
+        try {
+          await supabase.auth.signOut();
+        } catch (eSign) {
+          console.warn(eSign);
+        }
+        setLoggedOutUI();
+        setAuthMsg(
+          'Your account has been deactivated. Contact a Super Admin to reactivate access.',
+          'error'
+        );
+        const gate = document.querySelector('.auth-gate');
+        if (gate && !document.getElementById('inactive-account-msg')) {
+          const box = document.createElement('div');
+          box.id = 'inactive-account-msg';
+          box.className = 'inactive-account-msg';
+          box.textContent = 'Your account has been deactivated. Contact a Super Admin to reactivate access.';
+          gate.insertBefore(box, gate.firstChild);
+        }
+        return;
+      } else {
+        const stale = document.getElementById('inactive-account-msg');
+        if (stale) stale.remove();
       }
 
       // Apply pending signup details (OTP flow) if present
@@ -3528,11 +3659,23 @@
       console.error('ensure_my_profile failed:', err);
       try {
         const uid = currentUserId();
-        const { data } = await supabase.from('profiles').select('role, full_name').eq('user_id', uid).maybeSingle();
-        if (data?.role === 'super') userRole = 'super';
-        if (data?.full_name) myFullName = String(data.full_name).trim();
+        const { data } = await supabase.from('profiles').select('role, full_name, is_active').eq('user_id', uid).maybeSingle();
+        if (data) {
+          userRole = normalizeRole(data.role);
+          if (data.is_active === false) profileIsActive = false;
+          if (data.full_name) myFullName = String(data.full_name).trim();
+        }
       } catch (e2) {
         console.error(e2);
+      }
+      if (profileIsActive === false) {
+        try { await supabase.auth.signOut(); } catch (_) {}
+        setLoggedOutUI();
+        setAuthMsg(
+          'Your account has been deactivated. Contact a Super Admin to reactivate access.',
+          'error'
+        );
+        return;
       }
     }
     updateHeaderFullName();
@@ -3578,6 +3721,9 @@
 
   function hasPendingDelete(entityType, entityId) {
     return pendingDeleteIds[entityType]?.has(entityId) || false;
+  }
+  function isDeletePending(entityType, entityId) {
+    return hasPendingDelete(entityType, entityId);
   }
 
   async function requestDelete({ entityType, entityId, entityLabel, projectId }) {
@@ -3640,8 +3786,8 @@
   async function loadApprovalsInto(bodyEl) {
     bodyEl.innerHTML = '<div class="audit-loading">Loading…</div>';
     try {
-      if (!isSuperUser()) {
-        bodyEl.innerHTML = '<div class="audit-empty">Only super users can review delete requests.</div>';
+      if (!canApproveDeletes()) {
+        bodyEl.innerHTML = '<div class="audit-empty">Only Super Admins can review delete requests.</div>';
         return;
       }
       const { data, error } = await supabase
@@ -4082,7 +4228,138 @@
   document.getElementById('admin-project-save').addEventListener('click', saveProjectGroupAssignment);
 
 
+
+  // ── Users admin (super_admin) ──
+  function openUsersAdmin() {
+    if (!isSuperAdmin()) return;
+    document.getElementById('users-backdrop').hidden = false;
+    loadUsersAdminList();
+  }
+  function closeUsersAdmin() {
+    document.getElementById('users-backdrop').hidden = true;
+  }
+  async function loadUsersAdminList() {
+    const list = document.getElementById('users-list');
+    if (!list) return;
+    list.innerHTML = '<li><span class="meta">Loading…</span></li>';
+    try {
+      if (!isSuperAdmin()) {
+        list.innerHTML = '<li><span class="meta">Only Super Admins can manage users.</span></li>';
+        return;
+      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, email, role, full_name, is_active')
+        .order('email', { ascending: true });
+      if (error) throw error;
+      knownProfiles = data || [];
+      const me = currentUserId();
+      if (!knownProfiles.length) {
+        list.innerHTML = '<li><span class="meta">No profiles found.</span></li>';
+        return;
+      }
+      list.innerHTML = knownProfiles.map((p) => {
+        const role = normalizeRole(p.role);
+        const active = p.is_active !== false;
+        const isSelf = p.user_id === me;
+        const roleOpts = ['admin', 'user'].map((r) =>
+          '<option value="' + r + '"' + (role === r ? ' selected' : '') + '>' + (r === 'admin' ? 'Admin' : 'User') + '</option>'
+        ).join('');
+        const roleControl = role === 'super_admin'
+          ? '<span class="meta">Super Admin</span>'
+          : ('<select data-user-role="' + escapeHtml(p.user_id) + '"' + (isSelf ? ' disabled' : '') + '>' + roleOpts + '</select>');
+        return (
+          '<li>' +
+            '<div><div>' + escapeHtml(p.email || p.user_id) + '</div>' +
+            '<div class="meta">' + escapeHtml(p.full_name || '') + (isSelf ? ' · you' : '') + '</div></div>' +
+            '<div class="users-actions">' +
+              roleControl +
+              '<label class="active-toggle">' +
+                '<input type="checkbox" data-user-active="' + escapeHtml(p.user_id) + '"' +
+                  (active ? ' checked' : '') + (isSelf ? ' disabled' : '') + ' />' +
+                (active ? 'Active' : 'Inactive') +
+              '</label>' +
+            '</div>' +
+          '</li>'
+        );
+      }).join('');
+      list.querySelectorAll('[data-user-role]').forEach((sel) => {
+        sel.addEventListener('change', () => {
+          updateUserRole(sel.getAttribute('data-user-role'), sel.value);
+        });
+      });
+      list.querySelectorAll('[data-user-active]').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          updateUserActive(cb.getAttribute('data-user-active'), cb.checked);
+        });
+      });
+    } catch (err) {
+      console.error(err);
+      list.innerHTML = '<li><span class="meta">Could not load users: ' + escapeHtml(err.message || 'error') + '</span></li>';
+    }
+  }
+  async function updateUserRole(userId, role) {
+    const next = normalizeRole(role);
+    if (next === 'super_admin') {
+      alert('Promote to Super Admin via SQL if needed.');
+      loadUsersAdminList();
+      return;
+    }
+    if (!['admin', 'user'].includes(next)) {
+      loadUsersAdminList();
+      return;
+    }
+    try {
+      await runSync('Saving…', async () => {
+        const { error } = await supabase.from('profiles').update({ role: next }).eq('user_id', userId);
+        if (error) throw error;
+        await writeAudit({
+          action: 'profile.role_change',
+          entityType: 'profile',
+          entityId: userId,
+          entityLabel: (knownProfiles.find((p) => p.user_id === userId) || {}).email || userId,
+          details: { role: next },
+        });
+      });
+      await loadUsersAdminList();
+    } catch (err) {
+      alert('Could not update role: ' + (err.message || 'unknown error'));
+      await loadUsersAdminList();
+    }
+  }
+  async function updateUserActive(userId, isActive) {
+    if (userId === currentUserId()) {
+      alert('You cannot deactivate your own account.');
+      await loadUsersAdminList();
+      return;
+    }
+    try {
+      await runSync('Saving…', async () => {
+        const { error } = await supabase.from('profiles').update({ is_active: !!isActive }).eq('user_id', userId);
+        if (error) throw error;
+        await writeAudit({
+          action: isActive ? 'profile.activate' : 'profile.deactivate',
+          entityType: 'profile',
+          entityId: userId,
+          entityLabel: (knownProfiles.find((p) => p.user_id === userId) || {}).email || userId,
+          details: { is_active: !!isActive },
+        });
+      });
+      await loadUsersAdminList();
+    } catch (err) {
+      alert('Could not update active status: ' + (err.message || 'unknown error'));
+      await loadUsersAdminList();
+    }
+  }
+
   document.getElementById('btn-delete-approvals').addEventListener('click', openDeleteApprovals);
+  document.getElementById('btn-users')?.addEventListener('click', openUsersAdmin);
+  document.getElementById('users-close')?.addEventListener('click', closeUsersAdmin);
+  document.getElementById('users-refresh')?.addEventListener('click', loadUsersAdminList);
+  document.getElementById('users-backdrop')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('users-backdrop')) closeUsersAdmin();
+  });
+
   document.getElementById('approvals-close').addEventListener('click', closeDeleteApprovals);
   document.getElementById('approvals-refresh').addEventListener('click', () => {
     loadApprovalsInto(document.getElementById('approvals-body'));
@@ -4101,6 +4378,10 @@
 
   // ── CRUD: projects ──
   function addProject() {
+    if (!canManageStructure()) {
+      alert('Your role can only fill the checklist (update item status). Ask an Admin to add implementations.');
+      return;
+    }
     openModal({
       title: 'New implementation',
       fields: projectFields({ name: 'New implementation', description: '', status: 'active', clientName: '', branch: '', targetDate: '' }),
@@ -4145,6 +4426,10 @@
   function editProject(id) {
     const p = getProject(id);
     if (!p) return;
+    if (!canManageStructure()) {
+      alert('Your role can only fill the checklist (update item status).');
+      return;
+    }
     openModal({
       title: 'Edit implementation',
       fields: projectFields(p),
@@ -4205,44 +4490,74 @@
   function deleteProject(id) {
     const p = getProject(id);
     if (!p) return;
+    if (!canRequestDelete()) {
+      alert('Your role cannot delete implementations.');
+      return;
+    }
+    if (isDeletePending('project', id)) {
+      alert('A delete request for this implementation is already pending Super Admin approval.');
+      return;
+    }
     const label = p.name || 'Untitled implementation';
     const taskCount = state.tasks.filter((t) => t.projectId === id).length;
-    // Within assigned groups, members may delete directly (RLS). Supers may delete anywhere.
+    const direct = canDirectDelete();
     confirmAction({
-      title: 'Delete implementation',
-      message: 'Delete implementation <strong>“' + escapeHtml(label) + '”</strong> and all its checklist items? This cannot be undone.',
-      confirmLabel: 'Delete',
+      title: direct ? 'Delete implementation' : 'Request delete approval',
+      message: direct
+        ? ('Delete implementation <strong>“' + escapeHtml(label) + '”</strong> and all its checklist items? This cannot be undone.')
+        : ('Request Super Admin approval to delete implementation <strong>“' + escapeHtml(label) + '”</strong> and all its checklist items?'),
+      confirmLabel: direct ? 'Delete' : 'Request approval',
       danger: true,
     }).then((ok) => {
       if (!ok) return;
-      const prevProjects = state.projects.slice();
-      const prevTasks = state.tasks.slice();
-      const prevSelected = state.selectedProjectId;
-      state.projects = state.projects.filter((x) => x.id !== id);
-      state.tasks = state.tasks.filter((t) => t.projectId !== id);
-      if (state.selectedProjectId === id) {
-        state.selectedProjectId = state.projects[0]?.id || null;
-      }
-      render();
-      (async () => {
-        try {
-          await runSync('Deleting…', async () => {
-            await performEntityDelete({
-              entityType: 'project',
-              entityId: id,
-              entityLabel: label,
-              taskCount,
-            });
-          });
-          cacheWrite();
-          render();
-        } catch {
-          state.projects = prevProjects;
-          state.tasks = prevTasks;
-          state.selectedProjectId = prevSelected;
-          render();
+      if (direct) {
+        const prevProjects = state.projects.slice();
+        const prevTasks = state.tasks.slice();
+        const prevSelected = state.selectedProjectId;
+        state.projects = state.projects.filter((x) => x.id !== id);
+        state.tasks = state.tasks.filter((t) => t.projectId !== id);
+        if (state.selectedProjectId === id) {
+          state.selectedProjectId = state.projects[0]?.id || null;
         }
-      })();
+        render();
+        (async () => {
+          try {
+            await runSync('Deleting…', async () => {
+              await performEntityDelete({
+                entityType: 'project',
+                entityId: id,
+                entityLabel: label,
+                taskCount,
+              });
+            });
+            cacheWrite();
+            render();
+          } catch {
+            state.projects = prevProjects;
+            state.tasks = prevTasks;
+            state.selectedProjectId = prevSelected;
+            render();
+          }
+        })();
+      } else {
+        (async () => {
+          try {
+            await runSync('Requesting…', async () => {
+              await requestDelete({
+                entityType: 'project',
+                entityId: id,
+                entityLabel: label,
+                projectId: id,
+              });
+            });
+            render();
+            alert('Delete request submitted. A Super Admin must approve it.');
+          } catch (err) {
+            alert('Could not submit delete request: ' + (err.message || 'unknown error'));
+            render();
+          }
+        })();
+      }
     });
   }
 
@@ -4689,6 +5004,10 @@
    * Always uses the selected project; lineup_order is never null.
    */
   async function importTasksFromFile(file, projectId) {
+    if (!canManageStructure()) {
+      alert('Your role cannot import checklist items.');
+      return;
+    }
     if (!projectId) {
       alert('Select an implementation before importing checklist items.');
       return;
@@ -4787,6 +5106,10 @@
 
   // ── CRUD: tasks ──
   function addTask(projectId) {
+    if (!canManageStructure()) {
+      alert('Your role can only fill the checklist (update item status). Ask an Admin to add checklist items.');
+      return;
+    }
     openModal({
       title: 'New checklist item',
       fields: taskFields({
@@ -4888,6 +5211,10 @@
   function editTask(id) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
+    if (!canManageStructure()) {
+      alert('Your role can only fill the checklist (update item status).');
+      return;
+    }
     openModal({
       title: 'Edit checklist item',
       fields: taskFields(t),
@@ -4943,34 +5270,65 @@
   function deleteTask(id) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
+    if (!canRequestDelete()) {
+      alert('Your role cannot delete checklist items.');
+      return;
+    }
+    if (isDeletePending('task', id)) {
+      alert('A delete request for this checklist item is already pending Super Admin approval.');
+      return;
+    }
     const label = t.title || 'Untitled checklist item';
+    const direct = canDirectDelete();
     confirmAction({
-      title: 'Delete checklist item',
-      message: 'Delete checklist item <strong>“' + escapeHtml(label) + '”</strong>? This cannot be undone.',
-      confirmLabel: 'Delete',
+      title: direct ? 'Delete checklist item' : 'Request delete approval',
+      message: direct
+        ? ('Delete checklist item <strong>“' + escapeHtml(label) + '”</strong>? This cannot be undone.')
+        : ('Request Super Admin approval to delete checklist item <strong>“' + escapeHtml(label) + '”</strong>?'),
+      confirmLabel: direct ? 'Delete' : 'Request approval',
       danger: true,
     }).then((ok) => {
       if (!ok) return;
-      const prev = state.tasks.slice();
-      state.tasks = state.tasks.filter((x) => x.id !== id);
-      render();
-      (async () => {
-        try {
-          await runSync('Deleting…', async () => {
-            await performEntityDelete({
-              entityType: 'task',
-              entityId: id,
-              entityLabel: label,
-              projectId: t.projectId,
+      if (direct) {
+        const prev = state.tasks.slice();
+        state.tasks = state.tasks.filter((x) => x.id !== id);
+        render();
+        (async () => {
+          try {
+            await runSync('Deleting…', async () => {
+              await performEntityDelete({
+                entityType: 'task',
+                entityId: id,
+                entityLabel: label,
+                projectId: t.projectId,
+              });
             });
-          });
-          cacheWrite();
-          render();
-        } catch {
-          state.tasks = prev;
-          render();
-        }
-      })();
+            cacheWrite();
+            render();
+          } catch {
+            state.tasks = prev;
+            render();
+          }
+        })();
+      } else {
+        (async () => {
+          try {
+            await runSync('Requesting…', async () => {
+              await requestDelete({
+                entityType: 'task',
+                entityId: id,
+                entityLabel: label,
+                projectId: t.projectId,
+              });
+            });
+            render();
+            alert('Delete request submitted. A Super Admin must approve it.');
+          } catch (err) {
+            alert('Could not submit delete request: ' + (err.message || 'unknown error'));
+            render();
+          }
+        })();
+      }
     });
   }
 
@@ -5314,13 +5672,23 @@
 
   function renderProjects() {
     const list = document.getElementById('project-list');
+    const canStruct = canManageStructure();
     if (state.projects.length === 0) {
-      list.innerHTML = `<li class="empty-sm">No implementations yet. Tap “+ New” to create one, then add checklist items.</li>`;
+      list.innerHTML = canStruct
+        ? `<li class="empty-sm">No implementations yet. Tap “+ New” to create one, then add checklist items.</li>`
+        : `<li class="empty-sm">No implementations yet. Ask an Admin to create one.</li>`;
       return;
     }
     list.innerHTML = state.projects.map((p) => {
       const stats = taskStats(projectTasks(p.id));
       const active = p.id === state.selectedProjectId;
+      const pendingDel = isDeletePending('project', p.id);
+      const actions = canStruct
+        ? (`<div class="project-actions">
+            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="Rename / edit" aria-label="Edit implementation">✎</button>
+            <button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="${pendingDel ? 'Delete pending approval' : (canDirectDelete() ? 'Delete implementation' : 'Request delete approval')}" aria-label="Delete implementation" ${pendingDel ? 'disabled' : ''}>✕</button>
+          </div>`)
+        : '';
       return `
         <li class="project-item ${active ? 'active' : ''}"
             role="option"
@@ -5329,7 +5697,7 @@
             tabindex="0">
           <span class="status-dot ${p.status}" title="${STATUS_LABELS[p.status] || p.status}" aria-hidden="true"></span>
           <div class="info">
-            <div class="name">${escapeHtml(p.name)}${p.groupId && groupName(p.groupId) ? ' <span class="group-chip" title="Department">' + escapeHtml(groupName(p.groupId)) + '</span>' : ''}</div>
+            <div class="name">${escapeHtml(p.name)}${p.groupId && groupName(p.groupId) ? ' <span class="group-chip" title="Department">' + escapeHtml(groupName(p.groupId)) + '</span>' : ''}${pendingDel ? ' <span class="pending-delete-badge" title="Delete pending approval">Pending delete</span>' : ''}</div>
             <div class="meta">
               <span>${STATUS_LABELS[p.status] || p.status}</span>
               <span>·</span>
@@ -5340,10 +5708,7 @@
           <div class="mini-bar" title="${stats.pctDone}% complete" aria-hidden="true">
             <span style="width:${stats.pctDone}%"></span>
           </div>
-          <div class="project-actions">
-            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="Rename / edit" aria-label="Edit implementation">✎</button>
-            <button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="Delete implementation" aria-label="Delete implementation">✕</button>
-          </div>
+          ${actions}
         </li>
       `;
     }).join('');
@@ -5354,11 +5719,12 @@
     const project = getProject(state.selectedProjectId);
 
     if (!project) {
+      const canStruct = canManageStructure();
       main.innerHTML = `
         <div class="empty">
           <p>No implementation selected</p>
-          <p class="sub">Create an implementation from the sidebar, then add checklist items.</p>
-          <button type="button" class="btn btn-primary" id="empty-add-project">+ New implementation</button>
+          <p class="sub">${canStruct ? 'Create an implementation from the sidebar, then add checklist items.' : 'Select an implementation from the sidebar, then fill checklist items (update status).'}</p>
+          ${canStruct ? '<button type="button" class="btn btn-primary" id="empty-add-project">+ New implementation</button>' : ''}
         </div>
       `;
       document.getElementById('empty-add-project')?.addEventListener('click', addProject);
@@ -5433,10 +5799,12 @@
           <button type="button" role="tab" data-filter="completed" class="${taskFilter === 'completed' ? 'active' : ''}" aria-selected="${taskFilter === 'completed'}">Completed (${stats.completed})</button>
         </div>
         <div class="task-toolbar-actions">
+          ${canManageStructure() ? `
           <button type="button" class="btn btn-ghost" id="btn-download-template" title="Download a CSV import template">Download template</button>
           <button type="button" class="btn btn-ghost" id="btn-import-tasks" title="Import checklist items from CSV or Excel into this implementation">Import items</button>
           <input type="file" id="import-tasks-file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
           <button type="button" class="btn btn-primary" id="btn-add-task">+ Add checklist item</button>
+          ` : '<span class="meta" style="font-size:0.75rem;color:var(--text-dim)">Checklist fill mode — update item status</span>'}
         </div>
       </div>
 
@@ -5444,8 +5812,8 @@
         ${tasks.length === 0 ? `
           <li class="empty">
             <p>${taskFilter === 'all' ? 'No checklist items in this implementation yet' : (taskFilter === 'hold' ? 'No checklist items on hold' : `No ${taskFilter} items`)}</p>
-            <p class="sub">${taskFilter === 'all' ? 'Add a checklist item to start tracking implementation progress.' : 'Try another filter, or add a new checklist item.'}</p>
-            ${taskFilter === 'all' ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
+            <p class="sub">${taskFilter === 'all' ? (canManageStructure() ? 'Add a checklist item to start tracking implementation progress.' : 'Ask an Admin to add checklist items.') : 'Try another filter.'}</p>
+            ${taskFilter === 'all' && canManageStructure() ? '<button type="button" class="btn btn-primary" id="empty-add-task">+ Add checklist item</button>' : ''}
           </li>
         ` : tasks.map((t) => renderTaskCard(t)).join('')}
       </ul>
@@ -5521,8 +5889,8 @@
             ? `<button type="button" class="btn-icon" data-action="qa-task" data-id="${t.id}" title="Check &amp; test (QA)" aria-label="Check and test">📋</button>`
             : `<button type="button" class="btn-icon qa-btn-disabled" disabled title="QA only when status is Done (awaiting QA)" aria-label="QA unavailable">📋</button>`}
           ${holdBtn}
-          <button type="button" class="btn-icon" data-action="edit-task" data-id="${t.id}" title="Edit" aria-label="Edit checklist item">✎</button>
-          <button type="button" class="btn-icon danger" data-action="delete-task" data-id="${t.id}" title="Delete checklist item" aria-label="Delete checklist item">✕</button>
+          ${canManageStructure() ? `<button type="button" class="btn-icon" data-action="edit-task" data-id="${t.id}" title="Edit" aria-label="Edit checklist item">✎</button>` : ''}
+          ${canManageStructure() ? `<button type="button" class="btn-icon danger" data-action="delete-task" data-id="${t.id}" title="${isDeletePending('task', t.id) ? 'Delete pending approval' : (canDirectDelete() ? 'Delete checklist item' : 'Request delete approval')}" aria-label="Delete checklist item" ${isDeletePending('task', t.id) ? 'disabled' : ''}>✕</button>` : ''}
         </div>
       </li>
     `;
@@ -5957,9 +6325,13 @@
 
   async function bootAppForSession() {
     loadSelectedProjectId();
-    setLoggedInUI();
     setAuthMsg('');
     await ensureProfile();
+    if (!session?.user || profileIsActive === false) {
+      // Inactive or signed out during ensureProfile
+      return;
+    }
+    setLoggedInUI();
     await refreshPendingDeleteIds();
 
     const cached = cacheRead();
