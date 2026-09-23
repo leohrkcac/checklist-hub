@@ -2456,34 +2456,34 @@
   <div class="modal-backdrop" id="qa-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="qa-title">
     <div class="modal modal-wide" id="qa-modal">
       <h3 id="qa-title">Check &amp; test</h3>
-      <p class="qa-hint">Retest after fixes until the checklist item passes with no bugs.</p>
+      <p class="qa-hint">Re-evaluate after fixes until the checklist item is Closed.</p>
       <form id="qa-form">
         <input type="hidden" id="qa-task-id" value="" />
         <div class="form-group">
-          <label for="qa-tester">Tester</label>
+          <label for="qa-tester">Evaluator</label>
           <input id="qa-tester" type="text" readonly maxlength="254" />
         </div>
         <div class="form-group">
-          <label for="qa-checked-at">Date tested</label>
+          <label for="qa-checked-at">Date evaluated</label>
           <input id="qa-checked-at" type="datetime-local" required />
         </div>
         <div class="form-group">
-          <span style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:0.35rem">Result</span>
-          <div class="qa-result-row" role="radiogroup" aria-label="Result">
-            <label><input type="radio" name="qa-result" value="pass" required /> Pass</label>
-            <label><input type="radio" name="qa-result" value="fail" /> Fail</label>
+          <span style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:0.35rem">Status</span>
+          <div class="qa-result-row" role="radiogroup" aria-label="Status">
+            <label><input type="radio" name="qa-result" value="pass" required /> Closed</label>
+            <label><input type="radio" name="qa-result" value="fail" /> Pending</label>
           </div>
         </div>
         <div class="form-group">
-          <label for="qa-notes">Notes</label>
-          <textarea id="qa-notes" rows="3" maxlength="4000" placeholder="What was tested, bugs found…"></textarea>
+          <label for="qa-notes">What was done</label>
+          <textarea id="qa-notes" rows="3" maxlength="4000" placeholder="Describe what was done…"></textarea>
         </div>
         <div class="modal-actions" style="margin-top:0.25rem;padding-top:0">
-          <button type="submit" class="btn btn-primary" id="qa-submit">Log check</button>
+          <button type="submit" class="btn btn-primary" id="qa-submit">Save evaluation</button>
         </div>
       </form>
       <h4 style="margin:1rem 0 0.4rem;font-size:0.9rem;color:var(--text-muted)">History</h4>
-      <div id="qa-history" class="qa-history-empty">No checks logged yet.</div>
+      <div id="qa-history" class="qa-history-empty">No evaluations yet.</div>
       <div class="modal-actions">
         <button type="button" class="btn btn-primary" id="qa-close">Close</button>
       </div>
@@ -3616,10 +3616,10 @@
     const show = !!latest || task.status === 'done' || task.status === 'completed';
     if (!show) return '';
     if (!latest) {
-      return '<span class="qa-badge none" title="Not tested yet">QA: Not tested</span>';
+      return '<span class="qa-badge none" title="Not evaluated yet">QA: Not evaluated</span>';
     }
     const cls = latest.result === 'pass' ? 'pass' : 'fail';
-    const label = latest.result === 'pass' ? 'Pass' : 'Fail';
+    const label = latest.result === 'pass' ? 'Closed' : 'Pending';
     const when = formatAuditTime(latest.checkedAt);
     const who = latest.testerName || latest.testerEmail || 'Unknown';
     const title = escapeHtml(who + (when ? ' · ' + when : ''));
@@ -3653,7 +3653,7 @@
     const list = qaForTask(taskId);
     if (!list.length) {
       el.className = 'qa-history-empty';
-      el.innerHTML = 'No checks logged yet.';
+      el.innerHTML = 'No evaluations yet.';
       return;
     }
     const oldestFirst = list.slice().reverse();
@@ -3663,8 +3663,8 @@
     el.innerHTML = '<ul class="qa-history" role="list">' + list.map((c) => {
       const n = attemptById[c.id];
       const badge = c.result === 'pass'
-        ? '<span class="qa-badge pass">Pass</span>'
-        : '<span class="qa-badge fail">Fail</span>';
+        ? '<span class="qa-badge pass">Closed</span>'
+        : '<span class="qa-badge fail">Pending</span>';
       const notes = c.notes
         ? '<div class="qa-h-notes">' + escapeHtml(c.notes) + '</div>'
         : '';
@@ -3693,7 +3693,7 @@
       || '(Set your full name in Profile)';
     document.getElementById('qa-tester').title = testerDisplay
       ? testerDisplay
-      : 'Open Profile to set your full name — Tester should be your name, not email.';
+      : 'Open Profile to set your full name — Evaluator should be your name, not email.';
     document.getElementById('qa-checked-at').value = toDatetimeLocalValue(new Date());
     setQaCheckedAtMax();
     document.getElementById('qa-notes').value = '';
@@ -3719,7 +3719,7 @@
     if (!t || !supabase) return;
     const resultEl = document.querySelector('input[name="qa-result"]:checked');
     if (!resultEl) {
-      setSync('error', 'Choose Pass or Fail');
+      setSync('error', 'Choose Closed or Pending');
       return;
     }
     const result = resultEl.value === 'pass' ? 'pass' : 'fail';
@@ -3728,12 +3728,12 @@
     const checkedRaw = document.getElementById('qa-checked-at').value;
     const checkedDate = checkedRaw ? new Date(checkedRaw) : new Date();
     if (Number.isNaN(checkedDate.getTime())) {
-      setSync('error', 'Enter a valid Date tested.');
+      setSync('error', 'Enter a valid Date evaluated.');
       return;
     }
     // Disallow future dates (1 minute grace for clock skew)
     if (checkedDate.getTime() > Date.now() + 60 * 1000) {
-      setSync('error', 'Date tested cannot be in the future.');
+      setSync('error', 'Date evaluated cannot be in the future.');
       setQaCheckedAtMax();
       return;
     }
@@ -3741,7 +3741,7 @@
     const attemptNo = qaForTask(taskId).length + 1;
     const testerName = (myFullName || '').trim();
     if (!testerName) {
-      setSync('error', 'Set your Full name in Profile before logging a QA check.');
+      setSync('error', 'Set your Full name in Profile before saving an evaluation (Evaluator).');
       return;
     }
     const row = {
@@ -3758,7 +3758,7 @@
     const submitBtn = document.getElementById('qa-submit');
     try {
       if (submitBtn) submitBtn.disabled = true;
-      await runSync('Logging check…', async () => {
+      await runSync('Saving evaluation…', async () => {
         let { data, error } = await supabase.from('task_qa_checks').insert(row).select().maybeSingle();
         if (error && /tester_name|column|schema cache/i.test(error.message || '')) {
           const fallback = Object.assign({}, row);
@@ -3794,12 +3794,12 @@
         t.status = 'completed';
         t.lineupOrder = 0;
         await persistTaskStatusChange(t, prev, 'task.status');
-        setSync('ok', 'QA passed — checklist item marked Completed.');
+        setSync('ok', 'Marked Closed — checklist item Completed.');
         closeQaModal();
       } else if (result === 'fail') {
         const ok = await confirmAction({
           title: 'Move back to Pending?',
-          message: 'This check failed. Move checklist item <strong>“' + escapeHtml(t.title || 'Untitled') + '”</strong> back to Pending for fixes? (Cancel keeps it as Done awaiting retest.)',
+          message: 'Status set to Pending. Move checklist item <strong>“' + escapeHtml(t.title || 'Untitled') + '”</strong> back to Pending for fixes? (Cancel keeps it as Done awaiting re-evaluation.)',
           confirmLabel: 'Set Pending',
           danger: false,
         });
@@ -4099,7 +4099,7 @@
       if (from != null && to != null) bits.push('Status: ' + statusLabel(from) + ' → ' + statusLabel(to));
       else if (to != null) bits.push('Status set to ' + statusLabel(to));
     }
-    if (d.result) bits.push('QA result: ' + (d.result === 'pass' ? 'Pass' : (d.result === 'fail' ? 'Fail' : d.result)));
+    if (d.result) bits.push('QA status: ' + (d.result === 'pass' ? 'Closed' : (d.result === 'fail' ? 'Pending' : d.result)));
     if (d.attemptNo != null || d.attempt_no != null) bits.push('Attempt #' + (d.attemptNo ?? d.attempt_no));
     if (d.method) bits.push('Method: ' + d.method);
     if (d.priority && d.prevPriority && d.priority !== d.prevPriority) bits.push('Priority: ' + d.prevPriority + ' → ' + d.priority);
