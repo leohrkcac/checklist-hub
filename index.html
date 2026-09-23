@@ -507,10 +507,31 @@
     .project-actions {
       display: none;
       gap: 0.1rem;
+      align-items: center;
+      flex-shrink: 0;
     }
     .project-item:hover .project-actions,
-    .project-item:focus-within .project-actions {
+    .project-item:focus-within .project-actions,
+    .project-item.show-actions .project-actions {
       display: flex;
+    }
+    .project-actions .btn-assign {
+      padding: 0.15rem 0.45rem;
+      font-size: 0.68rem;
+      font-weight: 550;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .project-item .assignee-chips {
+      margin-top: 0.2rem;
+    }
+    .project-item .assignee-chip {
+      font-size: 0.62rem;
+      padding: 0.08rem 0.35rem;
+      max-width: 7.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     /* ── Main project header ── */
@@ -6416,6 +6437,33 @@
     }).join('') + '</div>';
   }
 
+  /** Checkboxes: ONLY active Implementation Team group members (Assign modal). */
+  function implementationTeamAssigneeCheckboxesHtml(projectId) {
+    const selected = new Set(assigneesForProject(projectId || '').map((a) => a.userId));
+    const implIds = implementationTeamUserIds();
+    const g = implementationTeamGroup();
+    if (!g) {
+      return '<p class="meta" style="font-size:0.75rem;color:var(--text-dim)">No group named <strong>Implementation Team</strong> found. Create it in Admin → Groups first.</p>';
+    }
+    if (!implIds.size) {
+      return '<p class="meta" style="font-size:0.75rem;color:var(--text-dim)">No Implementation Team members yet. Add users to that group first.</p>';
+    }
+    let profiles = (assignableProfiles.length ? assignableProfiles : knownProfiles)
+      .filter((p) => implIds.has(p.user_id) && p.is_active !== false)
+      .slice();
+    profiles.sort((a, b) => String(a.email || '').localeCompare(String(b.email || '')));
+    if (!profiles.length) {
+      return '<p class="meta" style="font-size:0.75rem;color:var(--text-dim)">No active Implementation Team members found. Add users to that group first.</p>';
+    }
+    return '<div class="assignee-list">' + profiles.map((p) => {
+      const id = p.user_id;
+      const checked = selected.has(id) ? ' checked' : '';
+      const label = escapeHtml(profileLabel(p));
+      return '<label><input type="checkbox" name="assigneeIds" value="' + escapeHtml(id) + '"' + checked + ' />'
+        + '<span>' + label + '</span></label>';
+    }).join('') + '</div>';
+  }
+
   function instructionOptionsHtml(selectedId) {
     const opts = ['<option value="">— No linked instruction —</option>'];
     const list = (instructions || []).slice().sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
@@ -7526,6 +7574,53 @@
     `;
   }
 
+  function assignProject(id) {
+    if (!canAssignImplementation()) {
+      alert('You do not have permission to assign checklists.');
+      return;
+    }
+    const p = getProject(id);
+    if (!p) return;
+    openModal({
+      title: 'Assign to Implementation Team',
+      fields: `
+        <p class="meta" style="margin:0 0 0.75rem">Checklist: <strong>${escapeHtml(p.name)}</strong></p>
+        <div class="form-group">
+          <label>Implementation Team members</label>
+          <p class="meta" style="font-size:0.72rem;color:var(--text-dim);margin:0 0 0.35rem">Only active members of the <strong>Implementation Team</strong> group are listed.</p>
+          ${implementationTeamAssigneeCheckboxesHtml(p.id)}
+        </div>
+      `,
+      onSubmit(data) {
+        const selected = Array.isArray(data.assigneeIds)
+          ? data.assigneeIds
+          : (data.assigneeIds ? [data.assigneeIds] : []);
+        const implIds = implementationTeamUserIds();
+        // Preserve any non-team assignees not shown in this modal
+        const existingOutside = assigneesForProject(id)
+          .map((a) => a.userId)
+          .filter((uid) => !implIds.has(uid));
+        const nextIds = [...new Set([...existingOutside, ...selected.filter(Boolean)])];
+        (async () => {
+          try {
+            await runSync('Saving…', async () => {
+              await syncProjectAssignees(id, nextIds);
+              await writeAudit({
+                action: 'project.assign',
+                entityType: 'project',
+                entityId: id,
+                entityLabel: p.name,
+                details: { assigneeIds: nextIds, source: 'assign_modal' },
+              });
+            });
+            render();
+            showSuccessToast('Assignees updated');
+          } catch { /* status already set */ }
+        })();
+      },
+    });
+  }
+
   // ── Modal ──
   let modalHandler = null;
 
@@ -7852,15 +7947,23 @@
       const stats = taskStats(projectTasks(p.id));
       const active = p.id === state.selectedProjectId;
       const pendingDel = isDeletePending('project', p.id);
-      const canEdit = canStruct || canAssignImplementation();
-      const actions = canEdit
-        ? (`<div class="project-actions">
-            <button type="button" class="btn-icon" data-action="edit-project" data-id="${p.id}" title="${canStruct ? 'Rename / edit' : 'Assign users'}" aria-label="Edit implementation">✎</button>
-            ${canStruct ? `<button type="button" class="btn-icon danger" data-action="delete-project" data-id="${p.id}" title="${pendingDel ? 'Delete pending approval' : (canDirectDelete() ? 'Delete implementation' : 'Request delete approval')}" aria-label="Delete implementation" ${pendingDel ? 'disabled' : ''}>✕</button>` : ''}
-          </div>`)
+      const canAssign = canAssignImplementation();
+      const canEdit = canStruct || canAssign;
+      const actionBits = [];
+      if (canAssign) {
+        actionBits.push('<button type="button" class="btn btn-sm btn-ghost btn-assign" data-action="assign-project" data-id="' + p.id + '" title="Assign to Implementation Team" aria-label="Assign to Implementation Team">Assign</button>');
+      }
+      if (canEdit) {
+        actionBits.push('<button type="button" class="btn-icon" data-action="edit-project" data-id="' + p.id + '" title="' + (canStruct ? 'Rename / edit' : 'Edit details') + '" aria-label="Edit implementation">' + '✎' + '</button>');
+      }
+      if (canStruct) {
+        actionBits.push('<button type="button" class="btn-icon danger" data-action="delete-project" data-id="' + p.id + '" title="' + (pendingDel ? 'Delete pending approval' : (canDirectDelete() ? 'Delete implementation' : 'Request delete approval')) + '" aria-label="Delete implementation"' + (pendingDel ? ' disabled' : '') + '>' + '✕' + '</button>');
+      }
+      const actions = actionBits.length
+        ? ('<div class="project-actions">' + actionBits.join('') + '</div>')
         : '';
       return `
-        <li class="project-item ${active ? 'active' : ''}"
+        <li class="project-item ${active ? 'active' : ''} ${canAssign ? 'show-actions' : ''}"
             role="option"
             aria-selected="${active}"
             data-id="${p.id}"
@@ -7874,6 +7977,7 @@
               <span>${stats.done}/${stats.total}</span>
               ${p.clientName ? `<span>·</span><span title="Client">${escapeHtml(p.clientName)}</span>` : ''}
             </div>
+            ${assigneesForProject(p.id).length ? assigneeChipsHtml(p.id) : ''}
           </div>
           <div class="mini-bar" title="${stats.pctDone}% complete" aria-hidden="true">
             <span style="width:${stats.pctDone}%"></span>
@@ -8200,6 +8304,7 @@
       e.stopPropagation();
       const action = actionBtn.getAttribute('data-action');
       const id = actionBtn.getAttribute('data-id');
+      if (action === 'assign-project') assignProject(id);
       if (action === 'edit-project') editProject(id);
       if (action === 'delete-project') deleteProject(id);
       return;
